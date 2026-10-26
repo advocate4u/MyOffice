@@ -14,7 +14,7 @@ An original Android office and learning app focused on free, offline-first use, 
 ## Current implementation
 
 - Android app module: `app/`, Java 17, minSdk 26.
-- MyAdv release signing: CI uses the persistent keystore provided through GitHub Actions secrets `MYADV_KEYSTORE_BASE64`, `MYADV_STORE_PASSWORD`, `MYADV_KEY_ALIAS`, and `MYADV_KEY_PASSWORD`. When all four are configured, CI builds a MyAdv-signed release APK; otherwise it builds a debug-signed fallback. The fallback is not the stable release signer and should not be used for upgrades over an APK signed with a different key.
+- MyAdv release signing: CI always builds and uploads a clearly labeled debug test APK. A production update APK is built only when the persistent keystore secrets `MYADV_KEYSTORE_BASE64`, `MYADV_STORE_PASSWORD`, `MYADV_KEY_ALIAS`, and `MYADV_KEY_PASSWORD` are configured. If those secrets are missing, the workflow still completes the debug build and explains why no production update APK was published. Never use the debug APK to update the production app.
 - APK verification: CI verifies the APK signature, confirms the package ID remains `org.myoffice.app`, and emits a SHA-256 checksum. Android's package installer independently validates signatures at install/update time.
 - Back navigation: the Android Back button returns through previous screens; from Home, press Back twice within two seconds to close the app. Spreadsheet/presentation editors retain their unsaved-change prompts.
 - Local file hub: system document picker, recent URI list, bounded text previews, file metadata and open-with chooser.
@@ -24,6 +24,7 @@ An original Android office and learning app focused on free, offline-first use, 
 - PDF watermark/stamp export (feature F63): add user-supplied text such as DRAFT, COPY or APPROVED to every page of a new flattened PDF copy, while preserving the chosen viewer rotation and leaving the original untouched.
 - PDF page-range extraction (feature F69): create a new flattened PDF from an inclusive user-selected page range, optionally applying the current viewer rotation, while preserving the original source.
 - PDF merge (feature F70): combine the currently opened PDF with additional selected local PDFs into a new flattened PDF, rendered offline on a background thread; originals remain unchanged and merged output is limited to 500 pages.
+- PDF all-pages image export (feature F78): export up to 100 PDF pages as individual PNG images inside one ZIP archive, applying the current viewer rotation; render locally on a background thread and leave the source PDF unchanged.
 - PDF current-page image export (feature F77): render the currently viewed page to a PNG through Android's built-in PdfRenderer, honor the saved viewer rotation, and save through Android's document picker. Rendering is local, runs on a background thread, and does not modify the source PDF.
 - PDF page text annotation (feature F71): add user-entered text to the currently viewed page and export a new flattened PDF copy; the annotation is baked into that page only, with the source left unchanged.
 - Writer first milestone (feature F4): create, edit, save and reopen local UTF-8 plain-text documents; share text through Android's chooser; unsaved-change confirmation.
