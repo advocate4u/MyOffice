@@ -381,6 +381,22 @@ public final class MainActivity extends Activity {
             showPdf(uri, name);
             return;
         }
+        if (mime.equals("text/csv") || lower.endsWith(".csv")) {
+            try {
+                if (sizeOf(uri) > 1024 * 1024) throw new IllegalArgumentException("CSV is larger than the 1 MiB import limit");
+                String csv = readText(uri);
+                if (csv.endsWith("[Preview limited to the first 1 MiB.]")) {
+                    throw new IllegalArgumentException("CSV is larger than the 1 MiB import limit");
+                }
+                Toast.makeText(this, "Imported as a new local sheet; original file is unchanged.", Toast.LENGTH_LONG).show();
+                showSpreadsheetEditor(null, parseCsv(csv), true);
+                return;
+            } catch (Exception e) {
+                Toast.makeText(this, "Could not import this CSV. Files over 1 MiB are not supported yet.", Toast.LENGTH_LONG).show();
+                showDetails(uri, name, mime);
+                return;
+            }
+        }
         boolean textFile = mime.startsWith("text/") || mime.equals("application/json")
                 || lower.endsWith(".txt") || lower.endsWith(".md") || lower.endsWith(".csv")
                 || lower.endsWith(".log") || lower.endsWith(".json") || lower.endsWith(".xml");
