@@ -199,7 +199,7 @@ public final class MainActivity extends Activity {
         });
         page.addView(recentSearchInput);
         recentSortButton = action("Sort: Newest first", v -> {
-            recentSortMode = (recentSortMode + 1) % 3;
+            recentSortMode = (recentSortMode + 1) % 4;
             updateRecentSortLabel();
             renderRecents();
         });
@@ -2568,7 +2568,8 @@ public final class MainActivity extends Activity {
     private void updateRecentSortLabel() {
         if (recentSortButton == null) return;
         String label = recentSortMode == 0 ? "Sort: Newest first"
-                : recentSortMode == 1 ? "Sort: Name A–Z" : "Sort: Largest first";
+                : recentSortMode == 1 ? "Sort: Name A–Z"
+                : recentSortMode == 2 ? "Sort: Largest first" : "Sort: Favorites first";
         recentSortButton.setText(label);
     }
 
@@ -2615,8 +2616,15 @@ public final class MainActivity extends Activity {
             Collections.reverse(ordered);
         } else if (recentSortMode == 1) {
             ordered.sort((left, right) -> nameOf(Uri.parse(left)).compareToIgnoreCase(nameOf(Uri.parse(right))));
-        } else {
+        } else if (recentSortMode == 2) {
             ordered.sort((left, right) -> Long.compare(sizeOf(Uri.parse(right)), sizeOf(Uri.parse(left))));
+        } else {
+            ordered.sort((left, right) -> {
+                boolean leftFavorite = favoriteUris.contains(left);
+                boolean rightFavorite = favoriteUris.contains(right);
+                if (leftFavorite != rightFavorite) return leftFavorite ? -1 : 1;
+                return Integer.compare(recentUris.indexOf(right), recentUris.indexOf(left));
+            });
         }
         int shown = 0;
         for (String value : ordered) {
