@@ -10,6 +10,7 @@ import android.graphics.BitmapFactory;
 import android.graphics.Paint;
 import android.graphics.Matrix;
 import android.graphics.RectF;
+import android.graphics.Typeface;
 import android.graphics.pdf.PdfDocument;
 import android.graphics.pdf.PdfRenderer;
 import android.database.Cursor;
@@ -32,10 +33,16 @@ import android.widget.ScrollView;
 import android.widget.TextView;
 import android.widget.Toast;
 import android.text.Editable;
+import android.text.Html;
+import android.text.Spanned;
 import android.text.TextWatcher;
 import android.text.SpannableString;
 import android.text.style.BackgroundColorSpan;
 import android.text.style.ForegroundColorSpan;
+import android.text.style.StyleSpan;
+import android.text.style.UnderlineSpan;
+import android.text.style.StrikethroughSpan;
+import android.text.style.RelativeSizeSpan;
 import java.io.ByteArrayOutputStream;
 import java.io.ByteArrayInputStream;
 import java.io.File;
@@ -1434,19 +1441,52 @@ public final class MainActivity extends Activity {
     }
 
     private File[] writerFiles() {
-        File[] files = writerDirectory().listFiles((dir, name) -> name.endsWith(".txt"));
+        File[] files = writerDirectory().listFiles((dir, name) -> name.endsWith(".txt") || name.endsWith(".html"));
         if (files == null) return new File[0];
         Arrays.sort(files, Comparator.comparingLong(File::lastModified).reversed());
         return files;
     }
 
-    private String readWriterFile(File file) throws Exception {
+    private String readWriterRawFile(File file) throws Exception {
         try (InputStream in = new FileInputStream(file);
              ByteArrayOutputStream out = new ByteArrayOutputStream()) {
             byte[] buffer = new byte[8192];
             int count;
             while ((count = in.read(buffer)) != -1) out.write(buffer, 0, count);
             return out.toString("UTF-8");
+        }
+    }
+
+    private String readWriterFile(File file) throws Exception {
+        String raw = readWriterRawFile(file);
+        if (file.getName().toLowerCase(Locale.ROOT).endsWith(".html")) {
+            return Html.fromHtml(raw, Html.FROM_HTML_MODE_LEGACY).toString();
+        }
+        return raw;
+    }
+
+    private void applyWriterSpan(EditText body, Object span) {
+        int start = body.getSelectionStart();
+        int end = body.getSelectionEnd();
+        if (start < 0 || end < 0 || start == end) {
+            Toast.makeText(this, "Select text first, then choose formatting.", Toast.LENGTH_SHORT).show();
+            return;
+        }
+        int low = Math.min(start, end);
+        int high = Math.max(start, end);
+        body.getText().setSpan(span, low, high, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+    }
+
+    private void saveWriterHtml(File existing, EditText body) {
+        File target = existing != null && existing.getName().toLowerCase(Locale.ROOT).endsWith(".html")
+                ? existing : new File(writerDirectory(), "document_" + System.currentTimeMillis() + ".html");
+        try (OutputStreamWriter writer = new OutputStreamWriter(new FileOutputStream(target), "UTF-8")) {
+            writer.write(Html.toHtml(body.getText(), Html.TO_HTML_PARAGRAPH_LINES_INDIVIDUAL));
+            writer.flush();
+            Toast.makeText(this, "Formatted document saved as HTML.", Toast.LENGTH_SHORT).show();
+            showWriterList();
+        } catch (Exception e) {
+            Toast.makeText(this, "Could not save formatted document.", Toast.LENGTH_LONG).show();
         }
     }
 
@@ -1457,8 +1497,8 @@ public final class MainActivity extends Activity {
         back.setOnClickListener(v -> showHome());
         content.addView(back);
         content.addView(label("Writer", 27, true));
-        content.addView(label("Create and edit plain-text documents locally. Rich formatting and DOCX are planned separately.", 13, false));
-        content.addView(action("＋  New text document", v -> showWriterEditor(null, "")));
+        content.addView(label("Create and edit local documents. Select text to apply formatting; HTML preserves rich text.", 13, false));
+        content.addView(action("＋  New document", v -> showWriterEditor(null, "")));
         EditText writerSearch = new EditText(this);
         writerSearch.setSingleLine(true);
         writerSearch.setHint("Search Writer documents");
@@ -1617,18 +1657,40 @@ public final class MainActivity extends Activity {
         LinearLayout content = column();
         TextView back = label("‹  Back to Writer", 16, true);
         content.addView(back);
-        content.addView(label("Writer · Plain text", 24, true));
-        content.addView(label("UTF-8 local document. Hindi and English are supported; changes are saved only when you tap Save.", 13, false));
+        content.addView(label("Writer · Document editor", 24, true));
+        content.addView(label("Offline editing · Hindi and English · Select text before applying character formatting.", 13, false));
         EditText body = new EditText(this);
         body.setGravity(Gravity.TOP | Gravity.START);
         body.setMinLines(16);
         body.setTextSize(16);
         body.setHint("Start writing…");
         body.setText(initialText);
+        if (existing != null && existing.getName().toLowerCase(Locale.ROOT).endsWith(".html")) {
+            try { body.setText(Html.fromHtml(readWriterRawFile(existing), Html.FROM_HTML_MODE_LEGACY)); }
+            catch (Exception ignored) { }
+        }
         body.setInputType(android.text.InputType.TYPE_CLASS_TEXT
                 | android.text.InputType.TYPE_TEXT_FLAG_MULTI_LINE
                 | android.text.InputType.TYPE_TEXT_FLAG_CAP_SENTENCES);
         content.addView(body, new LinearLayout.LayoutParams(-1, dp(400)));
+        content.addView(label("Formatting", 16, true));
+        HorizontalScrollView formatScroll = new HorizontalScrollView(this);
+        LinearLayout formatBar = new LinearLayout(this);
+        formatBar.setOrientation(LinearLayout.HORIZONTAL);
+        formatBar.addView(action("Bold", v -> applyWriterSpan(body, new StyleSpan(Typeface.BOLD))));
+        formatBar.addView(action("Italic", v -> applyWriterSpan(body, new StyleSpan(Typeface.ITALIC))));
+        formatBar.addView(action("Underline", v -> applyWriterSpan(body, new UnderlineSpan())));
+        formatBar.addView(action("Strike", v -> applyWriterSpan(body, new StrikethroughSpan())));
+        formatBar.addView(action("Bigger", v -> applyWriterSpan(body, new RelativeSizeSpan(1.25f))));
+        formatBar.addView(action("Smaller", v -> applyWriterSpan(body, new RelativeSizeSpan(0.85f))));
+        formatBar.addView(action("Red", v -> applyWriterSpan(body, new ForegroundColorSpan(0xFFD32F2F))));
+        formatBar.addView(action("Blue", v -> applyWriterSpan(body, new ForegroundColorSpan(0xFF1565C0))));
+        formatBar.addView(action("Highlight", v -> applyWriterSpan(body, new BackgroundColorSpan(0xFFFFFF00))));
+        formatBar.addView(action("Left", v -> body.setGravity(Gravity.TOP | Gravity.START)));
+        formatBar.addView(action("Center", v -> body.setGravity(Gravity.TOP | Gravity.CENTER_HORIZONTAL)));
+        formatBar.addView(action("Right", v -> body.setGravity(Gravity.TOP | Gravity.RIGHT)));
+        formatScroll.addView(formatBar);
+        content.addView(formatScroll);
         TextView writerStats = label("", 12, false);
         writerStats.setTextColor(0xFF536078);
         content.addView(writerStats);
@@ -1687,7 +1749,14 @@ public final class MainActivity extends Activity {
         }), new LinearLayout.LayoutParams(0, -2, 1));
         content.addView(historyActions);
         content.addView(action("Find & Replace", v -> showFindReplaceDialog(body)));
-        content.addView(action("Save document", v -> saveWriterFile(existing, body.getText().toString())));
+        content.addView(action("Save document", v -> {
+            if (existing != null && existing.getName().toLowerCase(Locale.ROOT).endsWith(".html")) {
+                saveWriterHtml(existing, body);
+            } else {
+                saveWriterFile(existing, body.getText().toString());
+            }
+        }));
+        content.addView(action("Save formatted copy (HTML)", v -> saveWriterHtml(null, body)));
         content.addView(action("Share text", v -> {
             Intent share = new Intent(Intent.ACTION_SEND);
             share.setType("text/plain");
