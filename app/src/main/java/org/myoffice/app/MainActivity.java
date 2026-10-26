@@ -1419,6 +1419,11 @@ public final class MainActivity extends Activity {
                             : "blue".equalsIgnoreCase(color) ? 0xFF0000FF
                             : "none".equalsIgnoreCase(color) ? 0 : 0xFFFFFF00;
                     if (parsed != 0) out.setSpan(new BackgroundColorSpan(parsed), start, end, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+                } else if ("rFonts".equals(local)) {
+                    String family = wordAttribute(child, "ascii");
+                    if (family.isEmpty()) family = wordAttribute(child, "hAnsi");
+                    if (family.isEmpty()) family = wordAttribute(child, "eastAsia");
+                    if (!family.isEmpty()) out.setSpan(new TypefaceSpan(family), start, end, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
                 } else if ("sz".equals(local)) {
                     String halfPoints = wordAttribute(child, "val");
                     try {
