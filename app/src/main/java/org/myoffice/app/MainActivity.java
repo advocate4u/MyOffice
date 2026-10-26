@@ -51,6 +51,8 @@ import android.text.style.UnderlineSpan;
 import android.text.style.StrikethroughSpan;
 import android.text.style.RelativeSizeSpan;
 import android.text.style.AbsoluteSizeSpan;
+import android.text.style.SuperscriptSpan;
+import android.text.style.SubscriptSpan;
 import java.io.ByteArrayOutputStream;
 import java.io.ByteArrayInputStream;
 import java.io.File;
@@ -811,6 +813,8 @@ public final class MainActivity extends Activity {
         boolean italic = false;
         boolean underline = false;
         boolean strike = false;
+        boolean superscript = false;
+        boolean subscript = false;
         Integer foreground = null;
         Integer background = null;
         Float sizeChange = null;
@@ -826,6 +830,10 @@ public final class MainActivity extends Activity {
                 underline = true;
             } else if (span instanceof StrikethroughSpan) {
                 strike = true;
+            } else if (span instanceof SuperscriptSpan) {
+                superscript = true;
+            } else if (span instanceof SubscriptSpan) {
+                subscript = true;
             } else if (span instanceof ForegroundColorSpan) {
                 foreground = ((ForegroundColorSpan) span).getForegroundColor();
             } else if (span instanceof BackgroundColorSpan) {
@@ -843,6 +851,8 @@ public final class MainActivity extends Activity {
         if (italic) properties.append("<w:i/>");
         if (underline) properties.append("<w:u w:val=\"single\"/>");
         if (strike) properties.append("<w:strike/>");
+        if (superscript) properties.append("<w:vertAlign w:val="superscript"/>");
+        else if (subscript) properties.append("<w:vertAlign w:val="subscript"/>");
         if (fontFamily != null && !fontFamily.trim().isEmpty()) {
             String safeFamily = xmlEscape(fontFamily.trim());
             properties.append("<w:rFonts w:ascii=\"").append(safeFamily)
@@ -1451,6 +1461,10 @@ public final class MainActivity extends Activity {
                     if (family.isEmpty()) family = wordAttribute(child, "hAnsi");
                     if (family.isEmpty()) family = wordAttribute(child, "eastAsia");
                     if (!family.isEmpty()) out.setSpan(new TypefaceSpan(family), start, end, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+                } else if ("vertAlign".equals(local)) {
+                    String vertical = wordAttribute(child, "val");
+                    if ("superscript".equalsIgnoreCase(vertical)) out.setSpan(new SuperscriptSpan(), start, end, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+                    else if ("subscript".equalsIgnoreCase(vertical)) out.setSpan(new SubscriptSpan(), start, end, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
                 } else if ("sz".equals(local)) {
                     String halfPoints = wordAttribute(child, "val");
                     try {
@@ -3185,7 +3199,9 @@ public final class MainActivity extends Activity {
                 || text.getSpans(0, end, StrikethroughSpan.class).length > 0
                 || text.getSpans(0, end, RelativeSizeSpan.class).length > 0
                 || text.getSpans(0, end, ForegroundColorSpan.class).length > 0
-                || text.getSpans(0, end, BackgroundColorSpan.class).length > 0;
+                || text.getSpans(0, end, BackgroundColorSpan.class).length > 0
+                || text.getSpans(0, end, SuperscriptSpan.class).length > 0
+                || text.getSpans(0, end, SubscriptSpan.class).length > 0;
     }
 
     private void saveWriterEditorContent(File existing, EditText body) {
@@ -3557,7 +3573,8 @@ public final class MainActivity extends Activity {
             for (Object span : spans) {
                 if (span instanceof StyleSpan || span instanceof UnderlineSpan || span instanceof StrikethroughSpan
                         || span instanceof RelativeSizeSpan || span instanceof AbsoluteSizeSpan
-                        || span instanceof ForegroundColorSpan || span instanceof BackgroundColorSpan) editable.removeSpan(span);
+                        || span instanceof ForegroundColorSpan || span instanceof BackgroundColorSpan
+                        || span instanceof SuperscriptSpan || span instanceof SubscriptSpan) editable.removeSpan(span);
             }
             Toast.makeText(this, "Character formatting cleared.", Toast.LENGTH_SHORT).show();
         }));
