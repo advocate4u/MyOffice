@@ -51,6 +51,7 @@ An original Android office and learning app focused on free, offline-first use, 
 - Presentation Back protection (feature F42): Android system Back from the slide editor uses the save/discard/keep-editing prompt; system Back from slideshow returns to the editor.
 - Duplicate presentation (feature F43): create a separate copy of a local text slide deck and append “(copy)” to its first-slide title.
 - Duplicate CSV sheet (feature F44): make a byte-for-byte local copy of a saved CSV sheet so edits can be made independently.
+- Duplicate Writer document (feature F45): create a separate byte-for-byte copy of a saved plain-text Writer file.
 - Text import (feature F14): open a supported text file in preview and optionally edit a local copy in Writer, preserving the original source.
 - Find-in-text (feature F15): search a text preview case-insensitively and highlight matching phrases locally.
 - Formula preview (feature F16): calculate read-only SUM, AVERAGE, MIN, MAX and COUNT over simple cell ranges in the CSV grid, without changing stored formula text.
@@ -117,6 +118,7 @@ The uploaded APK has not yet been run through REA/JADX in this environment becau
 - [F42 Presentation system Back test plan](docs/testing/F42-presentation-system-back-test-plan.md)
 - [F43 Duplicate presentation test plan](docs/testing/F43-duplicate-presentation-test-plan.md)
 - [F44 Duplicate CSV sheet test plan](docs/testing/F44-duplicate-csv-sheet-test-plan.md)
+- [F45 Duplicate Writer document test plan](docs/testing/F45-duplicate-writer-test-plan.md)
 - [F14 Text import test plan](docs/testing/F14-text-import-test-plan.md)
 - [F15 Find-in-text test plan](docs/testing/F15-find-in-text-test-plan.md)
 - [F16 Formula preview test plan](docs/testing/F16-formula-preview-test-plan.md)
