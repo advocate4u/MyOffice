@@ -34,6 +34,7 @@ import android.text.SpannableString;
 import android.text.style.BackgroundColorSpan;
 import android.text.style.ForegroundColorSpan;
 import java.io.ByteArrayOutputStream;
+import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
@@ -46,6 +47,11 @@ import java.util.Arrays;
 import java.util.Comparator;
 import java.util.Locale;
 import java.util.List;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipInputStream;
+import javax.xml.parsers.DocumentBuilderFactory;
+import org.w3c.dom.Node;
+import org.w3c.dom.NodeList;
 
 public final class MainActivity extends Activity {
     private static final int PICK_FILE = 4101;
@@ -442,6 +448,18 @@ public final class MainActivity extends Activity {
                 return;
             }
         }
+        if (lower.endsWith(".docx") || mime.equals("application/vnd.openxmlformats-officedocument.wordprocessingml.document")) {
+            try {
+                String text = readDocxText(uri);
+                Toast.makeText(this, "DOCX text imported into Writer as a copy. Formatting and images are not preserved.", Toast.LENGTH_LONG).show();
+                showWriterEditor(null, text);
+                return;
+            } catch (Exception e) {
+                Toast.makeText(this, "Could not import text from this DOCX file.", Toast.LENGTH_LONG).show();
+                showDetails(uri, name, mime);
+                return;
+            }
+        }
         boolean textFile = mime.startsWith("text/") || mime.equals("application/json")
                 || lower.endsWith(".txt") || lower.endsWith(".md") || lower.endsWith(".csv")
                 || lower.endsWith(".log") || lower.endsWith(".json") || lower.endsWith(".xml");
@@ -450,6 +468,72 @@ public final class MainActivity extends Activity {
             catch (Exception e) { Toast.makeText(this, "Could not read this text file.", Toast.LENGTH_LONG).show(); }
         }
         showDetails(uri, name, mime);
+    }
+
+
+    private String readDocxText(Uri uri) throws Exception {
+        if (sizeOf(uri) > 10L * 1024L * 1024L) throw new IllegalArgumentException("DOCX exceeds the 10 MiB import limit");
+        byte[] documentXml = null;
+        InputStream source = getContentResolver().openInputStream(uri);
+        if (source == null) throw new IllegalStateException("DOCX source unavailable");
+        try (ZipInputStream zip = new ZipInputStream(source)) {
+            ZipEntry entry;
+            while ((entry = zip.getNextEntry()) != null) {
+                if ("word/document.xml".equals(entry.getName())) {
+                    ByteArrayOutputStream out = new ByteArrayOutputStream();
+                    byte[] buffer = new byte[8192];
+                    int count;
+                    int total = 0;
+                    while ((count = zip.read(buffer)) != -1) {
+                        total += count;
+                        if (total > 5 * 1024 * 1024) throw new IllegalArgumentException("DOCX text content exceeds the import limit");
+                        out.write(buffer, 0, count);
+                    }
+                    documentXml = out.toByteArray();
+                    break;
+                }
+            }
+        }
+        if (documentXml == null) throw new IllegalArgumentException("DOCX document.xml was not found");
+        DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
+        factory.setNamespaceAware(true);
+        factory.setXIncludeAware(false);
+        factory.setExpandEntityReferences(false);
+        factory.setFeature("http://apache.org/xml/features/disallow-doctype-decl", true);
+        factory.setFeature("http://xml.org/sax/features/external-general-entities", false);
+        factory.setFeature("http://xml.org/sax/features/external-parameter-entities", false);
+        org.w3c.dom.Document document = factory.newDocumentBuilder().parse(new ByteArrayInputStream(documentXml));
+        String wordNamespace = "http://schemas.openxmlformats.org/wordprocessingml/2006/main";
+        NodeList paragraphs = document.getElementsByTagNameNS(wordNamespace, "p");
+        StringBuilder text = new StringBuilder();
+        for (int i = 0; i < paragraphs.getLength(); i++) {
+            appendWordParagraph(paragraphs.item(i), text);
+            if (i < paragraphs.getLength() - 1) text.append('\n');
+        }
+        return text.toString();
+    }
+
+    private void appendWordParagraph(Node node, StringBuilder out) {
+        if (node.getNodeType() == Node.ELEMENT_NODE) {
+            String local = node.getLocalName();
+            if ("t".equals(local)) {
+                out.append(node.getTextContent());
+                return;
+            }
+            if ("tab".equals(local)) {
+                out.append('\t');
+                return;
+            }
+            if ("br".equals(local) || "cr".equals(local)) {
+                out.append('\n');
+                return;
+            }
+        }
+        Node child = node.getFirstChild();
+        while (child != null) {
+            appendWordParagraph(child, out);
+            child = child.getNextSibling();
+        }
     }
 
     private String readText(Uri uri) throws Exception {
