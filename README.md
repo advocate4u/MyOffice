@@ -1,41 +1,38 @@
 # MyOffice
 
-An original Android office suite informed by documented, publicly observable office-app workflows.
+An original Android office and learning app focused on free, offline-first use, including Hindi/English writing and low-resource devices.
 
-## Investigation approach
+## Development rules
 
-This project uses an evidence-first workflow to understand user-visible behavior and implement original functionality. Do not copy proprietary source code, protected assets, branding, or undocumented implementation details from third-party apps.
+- Implement one feature at a time.
+- Build a debug APK after each feature, verify the build and publish the artifact.
+- Then proceed to the next feature and repeat until the planned application is complete.
+- Base WPS-inspired compatibility work on public documentation and authorized observations of user-visible behavior; never copy proprietary source, protected assets, branding or private internals.
+- Label evidence honestly: public documentation is not the same as direct device verification.
+- Prioritize local file safety, offline behavior, Hindi text, accessibility and low storage use.
 
-### Initial target: document opening and editing
+## Current implementation
 
-1. Record the app version and test environment for each observation.
-2. Document user actions and visible results: launch, open/create document, edit text, format text, save, reopen, share/export.
-3. Separate direct observations from hypotheses.
-4. For software artifacts, analyze only targets and materials we own or are authorized to inspect.
-5. Record findings with reproducible steps and source/evidence references.
-6. Translate confirmed workflow requirements into original MyOffice code and acceptance tests.
+- Android app module: `app/`, Java 17, minSdk 26.
+- Local file hub: system document picker, recent URI list, bounded text previews, file metadata and open-with chooser.
+- Offline notes (feature F2): create, edit, save and reopen notes in app-private storage; Hindi/English text; unsaved-change confirmation.
+- No login or network permission is required for these core features.
+- DOCX/XLSX/PPTX editing, native PDF rendering, scanner/OCR, cloud sync and advanced office functionality are not implemented yet.
 
-## Milestones
+## Build and APK workflow
 
-- [ ] M0: Establish repository and investigation environment.
-- [ ] M1: Record document workflow observations and evidence.
-- [ ] M2: Define architecture and document-format compatibility strategy.
-- [ ] M3: Implement app shell and file-opening workflow.
-- [ ] M4: Implement editing and save/reopen behavior.
-- [ ] M5: Build, test, and publish a verified debug APK.
+GitHub Actions builds `app-debug.apk` on pushes to `main` and uploads it as `MyOffice-debug-apk`:
+https://github.com/advocate4u/MyOffice/actions/workflows/android-debug-apk.yml
+
+Check the latest run before claiming that a feature build succeeded. A successful CI build is not a substitute for installation and device-level acceptance testing.
+
+## Investigation and testing
+
+- [WPS reverse-engineering protocol](docs/investigation/08-wps-reverse-engineering-protocol.md)
+- [WPS-to-MyOffice feature evidence matrix](docs/investigation/09-wps-to-myoffice-feature-evidence-matrix.md)
+- [F1 local file hub test plan](docs/testing/F1-local-file-hub-test-plan.md)
+- [F2 offline notes test plan](docs/testing/F2-offline-notes-test-plan.md)
 
 ## Current status
 
-Repository baseline created. No Android application source has been added yet. REA has not been installed or run from this repository, and no WPS APK has been analyzed.
-
-## First investigation report template
-
-- Target/app version:
-- Device/Android version:
-- Workflow:
-- Steps observed:
-- Visible result:
-- Files/artifacts examined:
-- Confirmed findings:
-- Unknowns / hypotheses:
-- MyOffice acceptance criteria:
+F0/F1 file hub prototype and F2 offline notes implementation are in source. F2 has been committed; CI build is triggered by the push. Device acceptance tests remain pending until the APK is installed and tested on Android. Work proceeds one feature at a time, with a build after each feature.
