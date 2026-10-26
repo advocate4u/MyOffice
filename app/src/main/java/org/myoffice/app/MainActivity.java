@@ -1243,6 +1243,47 @@ public final class MainActivity extends Activity {
         }
     }
 
+    private void showFindReplaceDialog(EditText body) {
+        LinearLayout fields = new LinearLayout(this);
+        fields.setOrientation(LinearLayout.VERTICAL);
+        fields.setPadding(dp(20), dp(8), dp(20), 0);
+        EditText findInput = new EditText(this);
+        findInput.setSingleLine(true);
+        findInput.setHint("Text to find");
+        fields.addView(findInput);
+        EditText replaceInput = new EditText(this);
+        replaceInput.setSingleLine(true);
+        replaceInput.setHint("Replace with");
+        fields.addView(replaceInput);
+        new AlertDialog.Builder(this)
+                .setTitle("Find & Replace")
+                .setView(fields)
+                .setNegativeButton("Cancel", (dialog, which) -> dialog.dismiss())
+                .setPositiveButton("Replace all", (dialog, which) -> {
+                    String find = findInput.getText().toString();
+                    if (find.isEmpty()) {
+                        Toast.makeText(this, "Enter text to find.", Toast.LENGTH_SHORT).show();
+                        return;
+                    }
+                    String original = body.getText().toString();
+                    int count = 0;
+                    int offset = 0;
+                    while ((offset = original.indexOf(find, offset)) >= 0) {
+                        count++;
+                        offset += find.length();
+                    }
+                    if (count == 0) {
+                        Toast.makeText(this, "No matching text found.", Toast.LENGTH_SHORT).show();
+                        return;
+                    }
+                    String updated = original.replace(find, replaceInput.getText().toString());
+                    body.setText(updated);
+                    body.setSelection(body.getText().length());
+                    Toast.makeText(this, "Replaced " + count + " occurrence(s).", Toast.LENGTH_SHORT).show();
+                })
+                .show();
+    }
+
     private void showWriterEditor(File existing, String initialText) {
         LinearLayout content = column();
         TextView back = label("‹  Back to Writer", 16, true);
@@ -1259,6 +1300,7 @@ public final class MainActivity extends Activity {
                 | android.text.InputType.TYPE_TEXT_FLAG_MULTI_LINE
                 | android.text.InputType.TYPE_TEXT_FLAG_CAP_SENTENCES);
         content.addView(body, new LinearLayout.LayoutParams(-1, dp(400)));
+        content.addView(action("Find & Replace", v -> showFindReplaceDialog(body)));
         content.addView(action("Save document", v -> saveWriterFile(existing, body.getText().toString())));
         content.addView(action("Share text", v -> {
             Intent share = new Intent(Intent.ACTION_SEND);
