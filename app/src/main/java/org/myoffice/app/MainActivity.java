@@ -162,6 +162,8 @@ public final class MainActivity extends Activity {
     }
 
     private void showHome() {
+        recentSelectionMode = false;
+        selectedRecentUris.clear();
         page = column();
         page.addView(label("MyOffice", 29, true));
         TextView subtitle = label("Your files. Your learning. Offline.  •  By MyAdv", 15, false);
