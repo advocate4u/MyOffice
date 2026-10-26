@@ -1255,6 +1255,33 @@ public final class MainActivity extends Activity {
             richText.append(wordParagraphListPrefix(paragraph, numToAbstract, abstractLevels, listCounters));
             appendWordRichNode(paragraph, richText);
             int paragraphEnd = richText.length();
+            String paragraphStyle = "";
+            Node paragraphProperties = paragraph.getFirstChild();
+            while (paragraphProperties != null) {
+                if (paragraphProperties.getNodeType() == Node.ELEMENT_NODE && "pPr".equals(paragraphProperties.getLocalName())) {
+                    Node property = paragraphProperties.getFirstChild();
+                    while (property != null) {
+                        if (property.getNodeType() == Node.ELEMENT_NODE && "pStyle".equals(property.getLocalName())) {
+                            paragraphStyle = wordAttribute(property, "val");
+                            break;
+                        }
+                        property = property.getNextSibling();
+                    }
+                    break;
+                }
+                paragraphProperties = paragraphProperties.getNextSibling();
+            }
+            String normalizedStyle = paragraphStyle.toLowerCase(Locale.ROOT).replace(" ", "").replace("_", "");
+            if (paragraphEnd > paragraphStart) {
+                float styleScale = normalizedStyle.contains("title") ? 1.8f
+                        : normalizedStyle.contains("heading1") || normalizedStyle.equals("h1") ? 1.6f
+                        : normalizedStyle.contains("heading2") || normalizedStyle.equals("h2") ? 1.3f
+                        : normalizedStyle.contains("heading3") || normalizedStyle.equals("h3") ? 1.15f : 1.0f;
+                if (styleScale > 1.0f) {
+                    richText.setSpan(new StyleSpan(Typeface.BOLD), paragraphStart, paragraphEnd, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+                    richText.setSpan(new RelativeSizeSpan(styleScale), paragraphStart, paragraphEnd, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+                }
+            }
             String alignment = wordParagraphAlignment(paragraph);
             Layout.Alignment layout = "center".equals(alignment) ? Layout.Alignment.ALIGN_CENTER
                     : ("right".equals(alignment) || "end".equals(alignment)) ? Layout.Alignment.ALIGN_OPPOSITE
