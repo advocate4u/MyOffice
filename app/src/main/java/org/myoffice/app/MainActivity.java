@@ -2643,6 +2643,20 @@ public final class MainActivity extends Activity {
                 saveFavorites();
                 renderRecents();
             }));
+            card.addView(action("Share file", v -> {
+                String shareMime = getContentResolver().getType(uri);
+                if (shareMime == null || shareMime.trim().isEmpty()) shareMime = "*/*";
+                Intent share = new Intent(Intent.ACTION_SEND);
+                share.setType(shareMime);
+                share.putExtra(Intent.EXTRA_STREAM, uri);
+                share.setClipData(ClipData.newUri(getContentResolver(), name, uri));
+                share.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+                try {
+                    startActivity(Intent.createChooser(share, "Share " + name));
+                } catch (Exception e) {
+                    Toast.makeText(this, "No compatible sharing app was found.", Toast.LENGTH_LONG).show();
+                }
+            }));
             card.addView(action("Remove from recent", v -> {
                 recentUris.remove(value);
                 favoriteUris.remove(value);
