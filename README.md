@@ -20,8 +20,9 @@ An original Android office and learning app focused on free, offline-first use, 
 - Writer first milestone (feature F4): create, edit, save and reopen local UTF-8 plain-text documents; share text through Android's chooser; unsaved-change confirmation.
 - Spreadsheet first milestone (feature F5): editable local CSV grid with add-row/add-column controls, quoted-field parsing/escaping, and local save/reopen.
 - Presentation first milestone (feature F6): create/edit/save/reopen local text-only slide decks, navigate slides, add slides, and share current slide text.
+- Image-to-PDF first milestone (feature F7): select up to 20 local images, create a multi-page PDF on-device, and choose a destination through Android's Save document picker.
 - No login or network permission is required for these core features.
-- Rich-text formatting, DOCX import/export, formulas, XLSX/PPTX import/export, slide themes/images/animations, PDF annotation/search/conversion, scanner/OCR, cloud sync and advanced office functionality are not implemented yet.
+- Rich-text formatting, DOCX import/export, formulas, XLSX/PPTX import/export, slide themes/images/animations, camera scanning/OCR, PDF annotation/search and advanced office functionality are not implemented yet.
 
 ## Build and APK workflow
 
@@ -40,7 +41,8 @@ Check the latest run before claiming that a feature build succeeded. A successfu
 - [F4 Writer test plan](docs/testing/F4-writer-test-plan.md)
 - [F5 Spreadsheet test plan](docs/testing/F5-spreadsheet-test-plan.md)
 - [F6 Presentation test plan](docs/testing/F6-presentation-test-plan.md)
+- [F7 Image-to-PDF test plan](docs/testing/F7-image-to-pdf-test-plan.md)
 
 ## Current status
 
-F0/F1 file hub prototype, F2 offline notes, F3 basic PDF reader, F4 plain-text Writer, F5 CSV spreadsheet grid and F6 text-only presentations are in source. F2 through F5 build steps passed. F6 has been committed; CI build is triggered by the push. Device acceptance tests remain pending until the APK is installed and tested on Android. Work proceeds one feature at a time, with a build after each feature.
+F0/F1 file hub prototype, F2 offline notes, F3 basic PDF reader, F4 plain-text Writer, F5 CSV spreadsheet grid, F6 text-only presentations and F7 image-to-PDF conversion are in source. F2 through F6 build steps passed. F7 has been committed; CI build is triggered by the push. Device acceptance tests remain pending until the APK is installed and tested on Android. Work proceeds one feature at a time, with a build after each feature.
