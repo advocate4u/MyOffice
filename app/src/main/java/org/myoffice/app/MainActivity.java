@@ -1303,6 +1303,22 @@ public final class MainActivity extends Activity {
         if (view instanceof Button) ((Button) view).setText(mode == 0 ? "Sort: Modified newest" : "Sort: Title A–Z");
     }
 
+    private void duplicateWriterDocument(File source) {
+        File target = new File(writerDirectory(), "document_" + System.currentTimeMillis() + ".txt");
+        try (InputStream input = new FileInputStream(source);
+             FileOutputStream output = new FileOutputStream(target)) {
+            byte[] buffer = new byte[8192];
+            int read;
+            while ((read = input.read(buffer)) != -1) output.write(buffer, 0, read);
+            output.flush();
+            Toast.makeText(this, "Writer document duplicated.", Toast.LENGTH_SHORT).show();
+            showWriterList();
+        } catch (Exception e) {
+            if (target.exists()) target.delete();
+            Toast.makeText(this, "Could not duplicate this document.", Toast.LENGTH_LONG).show();
+        }
+    }
+
     private String writerTitleForSort(File file) {
         try {
             String text = readWriterFile(file);
@@ -1346,6 +1362,7 @@ public final class MainActivity extends Activity {
             card.addView(label(firstLine, 17, true));
             card.addView(label(preview.isEmpty() ? "Empty document" : preview, 13, false));
             card.addView(label("Modified " + DateFormat.getDateTimeInstance().format(new Date(file.lastModified())), 11, false));
+            card.addView(action("Duplicate document", v -> duplicateWriterDocument(selected)));
             card.addView(action("Delete document", v -> confirmDeleteFile(selected, "document", () -> showWriterList())));
             card.setOnClickListener(v -> {
                 try { showWriterEditor(selected, readWriterFile(selected)); }
