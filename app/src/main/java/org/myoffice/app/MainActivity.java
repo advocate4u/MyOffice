@@ -45,6 +45,7 @@ import java.util.ArrayList;
 import java.util.Date;
 import java.util.Arrays;
 import java.util.Comparator;
+import java.util.Collections;
 import java.util.Locale;
 import java.util.List;
 import java.util.zip.ZipEntry;
@@ -72,6 +73,8 @@ public final class MainActivity extends Activity {
     private LinearLayout page;
     private LinearLayout recentList;
     private EditText recentSearchInput;
+    private Button recentSortButton;
+    private int recentSortMode = 0;
     private SharedPreferences prefs;
     private final ArrayList<String> recentUris = new ArrayList<>();
     private ArrayList<ArrayList<EditText>> sheetCells = new ArrayList<>();
@@ -155,12 +158,18 @@ public final class MainActivity extends Activity {
             @Override public void afterTextChanged(Editable s) { }
         });
         page.addView(recentSearchInput);
+        recentSortButton = action("Sort: Newest first", v -> {
+            recentSortMode = (recentSortMode + 1) % 3;
+            updateRecentSortLabel();
+            renderRecents();
+        });
+        page.addView(recentSortButton);
         recentList = new LinearLayout(this);
         recentList.setOrientation(LinearLayout.VERTICAL);
         page.addView(recentList);
         renderRecents();
         page.addView(gap(14));
-        TextView foot = label("This first build previews text-based files. PDF rendering and DOCX/XLSX/PPTX editing are planned features, not included yet.", 12, false);
+        TextView foot = label("Open and manage local files offline. Full DOCX/XLSX/PPTX formatting compatibility is still in development.", 12, false);
         foot.setTextColor(0xFF596477);
         page.addView(foot);
         ScrollView scroll = new ScrollView(this);
@@ -1731,6 +1740,13 @@ public final class MainActivity extends Activity {
         setContentView(scroll);
     }
 
+    private void updateRecentSortLabel() {
+        if (recentSortButton == null) return;
+        String label = recentSortMode == 0 ? "Sort: Newest first"
+                : recentSortMode == 1 ? "Sort: Name A–Z" : "Sort: Largest first";
+        recentSortButton.setText(label);
+    }
+
     private void renderRecents() {
         if (recentList == null) return;
         recentList.removeAllViews();
@@ -1739,9 +1755,16 @@ public final class MainActivity extends Activity {
             return;
         }
         String query = recentSearchInput == null ? "" : recentSearchInput.getText().toString().trim().toLowerCase(Locale.ROOT);
+        ArrayList<String> ordered = new ArrayList<>(recentUris);
+        if (recentSortMode == 0) {
+            Collections.reverse(ordered);
+        } else if (recentSortMode == 1) {
+            ordered.sort((left, right) -> nameOf(Uri.parse(left)).compareToIgnoreCase(nameOf(Uri.parse(right))));
+        } else {
+            ordered.sort((left, right) -> Long.compare(sizeOf(Uri.parse(right)), sizeOf(Uri.parse(left))));
+        }
         int shown = 0;
-        for (int i = recentUris.size() - 1; i >= 0; i--) {
-            final String value = recentUris.get(i);
+        for (String value : ordered) {
             Uri uri = Uri.parse(value);
             String name = nameOf(uri);
             if (!query.isEmpty() && !name.toLowerCase(Locale.ROOT).contains(query)) continue;
