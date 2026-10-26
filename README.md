@@ -23,6 +23,7 @@ An original Android office and learning app focused on free, offline-first use, 
 - PDF rotated-copy export (feature F60): export a new PDF with the selected 0°/90°/180°/270° viewer rotation baked into every page; rendering runs off the UI thread and leaves the source untouched. This rasterized output may lose searchable/selectable text and is limited to 500 pages.
 - Writer first milestone (feature F4): create, edit, save and reopen local UTF-8 plain-text documents; share text through Android's chooser; unsaved-change confirmation.
 - Writer rich formatting (feature F57): apply bold, italic, underline, strikethrough, relative font size, red/blue text, yellow highlight, and left/center/right editor alignment. Formatted copies persist as HTML and can be reopened offline; existing TXT files remain supported.
+- Writer rich-format save safety (feature F60): detect formatting spans when saving or leaving Writer, persist formatted content as HTML instead of silently flattening it to plain text, and compare the editor's actual initial text when checking for unsaved changes.
 - Spreadsheet first milestone (feature F5): editable local CSV grid with add-row/add-column controls, quoted-field parsing/escaping, and local save/reopen.
 - Presentation first milestone (feature F6): create/edit/save/reopen local text-only slide decks, navigate slides, add slides, and share current slide text.
 - Image-to-PDF first milestone (feature F7): select up to 20 local images, create a multi-page PDF on-device, and choose a destination through Android's Save document picker.
