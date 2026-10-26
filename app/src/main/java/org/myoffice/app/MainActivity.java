@@ -139,12 +139,12 @@ public final class MainActivity extends Activity {
         intro.setBackgroundColor(0xFFFFFFFF);
         page.addView(intro);
         page.addView(action("＋  Open a file", v -> openPicker()));
-        page.addView(action("＋  Create a note (offline)", v -> showNoteEditor(null, "", "")));
-        page.addView(action("My notes", v -> showNotes()));
-        page.addView(action("Writer: text documents", v -> showWriterList()));
-        page.addView(action("Spreadsheet: CSV sheets", v -> showSpreadsheetList()));
-        page.addView(action("Presentation: slide decks", v -> showPresentationList()));
-        page.addView(action("Images to PDF (offline)", v -> openImagePicker()));
+        addShortcutRow(page, "Create note", "Quick note · Offline", v -> showNoteEditor(null, "", ""),
+                "Writer", "Text documents", v -> showWriterList());
+        addShortcutRow(page, "My notes", "Saved notes", v -> showNotes(),
+                "Spreadsheet", "CSV sheets", v -> showSpreadsheetList());
+        addShortcutRow(page, "Presentation", "Text slide decks", v -> showPresentationList(),
+                "Images to PDF", "Create a PDF offline", v -> openImagePicker());
         page.addView(action("Refresh recent files", v -> { loadRecents(); showHome(); }));
         page.addView(gap(12));
         page.addView(label("Recent files", 21, true));
@@ -175,6 +175,38 @@ public final class MainActivity extends Activity {
         ScrollView scroll = new ScrollView(this);
         scroll.addView(page);
         setContentView(scroll);
+    }
+
+    private void addShortcutRow(LinearLayout parent,
+                                String leftTitle, String leftSubtitle, View.OnClickListener leftClick,
+                                String rightTitle, String rightSubtitle, View.OnClickListener rightClick) {
+        LinearLayout row = new LinearLayout(this);
+        row.setOrientation(LinearLayout.HORIZONTAL);
+        LinearLayout.LayoutParams rowParams = new LinearLayout.LayoutParams(-1, -2);
+        rowParams.setMargins(0, dp(3), 0, dp(3));
+        parent.addView(row, rowParams);
+        row.addView(shortcutTile(leftTitle, leftSubtitle, leftClick),
+                new LinearLayout.LayoutParams(0, dp(84), 1));
+        View spacer = new View(this);
+        row.addView(spacer, new LinearLayout.LayoutParams(dp(8), 1));
+        row.addView(shortcutTile(rightTitle, rightSubtitle, rightClick),
+                new LinearLayout.LayoutParams(0, dp(84), 1));
+    }
+
+    private View shortcutTile(String title, String subtitle, View.OnClickListener click) {
+        LinearLayout tile = new LinearLayout(this);
+        tile.setOrientation(LinearLayout.VERTICAL);
+        tile.setGravity(Gravity.CENTER_VERTICAL);
+        tile.setPadding(dp(12), dp(10), dp(12), dp(10));
+        tile.setBackgroundColor(0xFFFFFFFF);
+        tile.setClickable(true);
+        tile.setFocusable(true);
+        tile.setOnClickListener(click);
+        tile.addView(label(title, 16, true));
+        TextView detail = label(subtitle, 11, false);
+        detail.setTextColor(0xFF536078);
+        tile.addView(detail);
+        return tile;
     }
 
     private View gap(int height) {
