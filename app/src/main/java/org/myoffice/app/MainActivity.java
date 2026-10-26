@@ -1673,6 +1673,7 @@ public final class MainActivity extends Activity {
         boolean bold = false, italic = false, underline = false, strike = false;
         boolean superscript = false, subscript = false;
         Float sizeChange = null;
+        Integer absoluteSizePx = null;
         Object[] spans = richText.getSpans(position, Math.min(richText.length(), position + 1), Object.class);
         for (Object span : spans) {
             if (span instanceof StyleSpan) {
@@ -1683,6 +1684,7 @@ public final class MainActivity extends Activity {
             else if (span instanceof StrikethroughSpan) strike = true;
             else if (span instanceof SuperscriptSpan) superscript = true;
             else if (span instanceof SubscriptSpan) subscript = true;
+            else if (span instanceof AbsoluteSizeSpan) absoluteSizePx = ((AbsoluteSizeSpan) span).getSize();
             else if (span instanceof RelativeSizeSpan) sizeChange = ((RelativeSizeSpan) span).getSizeChange();
         }
         StringBuilder props = new StringBuilder();
@@ -1692,7 +1694,8 @@ public final class MainActivity extends Activity {
         if (strike) props.append("\\strike ");
         if (superscript) props.append("\\super ");
         else if (subscript) props.append("\\sub ");
-        if (sizeChange != null) props.append("\\fs").append(Math.max(4, Math.min(144, Math.round(24f * sizeChange)))).append(' ');
+        if (absoluteSizePx != null) props.append("\\fs").append(Math.max(4, Math.min(144, Math.round(absoluteSizePx * 1.5f)))).append(' ');
+        else if (sizeChange != null) props.append("\\fs").append(Math.max(4, Math.min(144, Math.round(24f * sizeChange)))).append(' ');
         return props.toString();
     }
 
