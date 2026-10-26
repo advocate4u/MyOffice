@@ -21,6 +21,7 @@ An original Android office and learning app focused on free, offline-first use, 
 - Offline notes (feature F2): create, edit, save and reopen notes in app-private storage; Hindi/English text; unsaved-change confirmation.
 - Basic PDF reader (feature F3): render local PDF pages with Android PdfRenderer and navigate previous/next pages; rendering stays on-device and unsupported/encrypted files show an error.
 - Writer first milestone (feature F4): create, edit, save and reopen local UTF-8 plain-text documents; share text through Android's chooser; unsaved-change confirmation.
+- Writer rich formatting (feature F57): apply bold, italic, underline, strikethrough, relative font size, red/blue text, yellow highlight, and left/center/right editor alignment. Formatted copies persist as HTML and can be reopened offline; existing TXT files remain supported.
 - Spreadsheet first milestone (feature F5): editable local CSV grid with add-row/add-column controls, quoted-field parsing/escaping, and local save/reopen.
 - Presentation first milestone (feature F6): create/edit/save/reopen local text-only slide decks, navigate slides, add slides, and share current slide text.
 - Image-to-PDF first milestone (feature F7): select up to 20 local images, create a multi-page PDF on-device, and choose a destination through Android's Save document picker.
