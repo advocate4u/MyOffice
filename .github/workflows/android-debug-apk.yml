@@ -35,12 +35,12 @@ jobs:
           APK=app/build/outputs/apk/debug/app-debug.apk
           test -s "$APK"
           "$ANDROID_SDK_ROOT/build-tools/35.0.0/aapt" dump badging "$APK" | grep -Fq "package: name='org.myoffice.app.debug'"
-          cp "$APK" app/build/outputs/apk/debug/MyOffice-0.4.1-DEBUG-TEST-ONLY.apk
+          cp "$APK" app/build/outputs/apk/debug/MyOffice-0.4.2-DEBUG-TEST-ONLY.apk
       - name: Upload debug test APK (NOT an update)
         uses: actions/upload-artifact@v4
         with:
-          name: MyOffice-0.4.1-DEBUG-TEST-ONLY
-          path: app/build/outputs/apk/debug/MyOffice-0.4.1-DEBUG-TEST-ONLY.apk
+          name: MyOffice-0.4.2-DEBUG-TEST-ONLY
+          path: app/build/outputs/apk/debug/MyOffice-0.4.2-DEBUG-TEST-ONLY.apk
           if-no-files-found: error
           retention-days: 7
 
@@ -84,16 +84,16 @@ jobs:
           BUILD_TOOLS="$ANDROID_SDK_ROOT/build-tools/35.0.0"
           "$BUILD_TOOLS/apksigner" verify --verbose --print-certs "$APK"
           BADGING="$("$BUILD_TOOLS/aapt" dump badging "$APK")"
-          echo "$BADGING" | grep -Fq "package: name='org.myoffice.app' versionCode='5' versionName='0.4.1'" || {
+          echo "$BADGING" | grep -Fq "package: name='org.myoffice.app' versionCode='6' versionName='0.4.2'" || {
             echo "Unexpected package ID or version; refusing to publish."
             exit 1
           }
           "$BUILD_TOOLS/zipalign" -c -v -P 16 4 "$APK"
-          cp "$APK" app/build/outputs/apk/release/MyOffice-0.4.1-MYADV-SIGNED-UPDATE.apk
-          sha256sum app/build/outputs/apk/release/MyOffice-0.4.1-MYADV-SIGNED-UPDATE.apk > app/build/outputs/apk/release/MyOffice-0.4.1-SHA256SUMS.txt
+          cp "$APK" app/build/outputs/apk/release/MyOffice-0.4.2-MYADV-SIGNED-UPDATE.apk
+          sha256sum app/build/outputs/apk/release/MyOffice-0.4.2-MYADV-SIGNED-UPDATE.apk > app/build/outputs/apk/release/MyOffice-0.4.2-SHA256SUMS.txt
           {
             echo "### Production update APK"
-            echo "- Install only MyOffice-0.4.1-MYADV-SIGNED-UPDATE.apk to update the production app."
+            echo "- Install only MyOffice-0.4.2-MYADV-SIGNED-UPDATE.apk to update the production app."
             echo "- Package ID verified: org.myoffice.app"
             echo "- Signature verified with the configured persistent MyAdv keystore."
             echo "- If Android still reports a signature conflict, the installed app was signed with a different certificate; the old certificate or original keystore is required to update without uninstalling."
@@ -104,9 +104,9 @@ jobs:
         if: steps.signing.outputs.ready == 'true'
         uses: actions/upload-artifact@v4
         with:
-          name: MyOffice-0.4.1-MYADV-SIGNED-UPDATE
+          name: MyOffice-0.4.2-MYADV-SIGNED-UPDATE
           path: |
-            app/build/outputs/apk/release/MyOffice-0.4.1-MYADV-SIGNED-UPDATE.apk
-            app/build/outputs/apk/release/MyOffice-0.4.1-SHA256SUMS.txt
+            app/build/outputs/apk/release/MyOffice-0.4.2-MYADV-SIGNED-UPDATE.apk
+            app/build/outputs/apk/release/MyOffice-0.4.2-SHA256SUMS.txt
           if-no-files-found: error
           retention-days: 14
