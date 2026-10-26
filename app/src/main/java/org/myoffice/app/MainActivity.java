@@ -1292,7 +1292,8 @@ public final class MainActivity extends Activity {
     }
 
     private String formatFormulaNumber(double result) {
-        return formatFormulaNumber(result);
+        if (result == Math.rint(result) && Math.abs(result) < 9e15) return String.valueOf((long) result);
+        return String.format(Locale.ROOT, "%.6f", result).replaceAll("0+$", "").replaceAll("\\.$", "");
     }
 
     private String evaluateAggregateFormula(String formula, ArrayList<ArrayList<String>> data) {
@@ -1365,8 +1366,7 @@ public final class MainActivity extends Activity {
         else if (function.equals("AVERAGE")) result = sum / count;
         else if (function.equals("MIN")) result = min;
         else result = max;
-        if (result == Math.rint(result) && Math.abs(result) < 9e15) return String.valueOf((long) result);
-        return String.format(Locale.ROOT, "%.6f", result).replaceAll("0+$", "").replaceAll("\\.$", "");
+        return formatFormulaNumber(result);
     }
 
     private void showFormulaPreview() {
