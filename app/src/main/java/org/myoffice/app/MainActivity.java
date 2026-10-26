@@ -4455,6 +4455,25 @@ public final class MainActivity extends Activity {
                 .show();
     }
 
+    private void showFormulaHelp() {
+        String message = "MyOffice formula preview supports simple arithmetic between two cell references and these range functions:\n\n"
+                + "=A1+B1    Add two referenced cells\n"
+                + "=A1-B1    Subtract\n"
+                + "=A1*B1    Multiply\n"
+                + "=A1/B1    Divide (division by zero is reported)\n"
+                + "=SUM(A1:A4)    Total numeric values\n"
+                + "=AVERAGE(A1:A4)    Mean of numeric values\n"
+                + "=MIN(A1:A4)    Smallest numeric value\n"
+                + "=MAX(A1:A4)    Largest numeric value\n"
+                + "=COUNT(A1:A4)    Count numeric values\n\n"
+                + "Use cell references such as A1 and B2. Range functions currently require a rectangular range such as A1:B4. Formula results are shown in a read-only preview; they are not recalculated into cells or saved as spreadsheet formulas. This editor currently saves CSV values.";
+        new AlertDialog.Builder(this)
+                .setTitle("Formula help · supported syntax")
+                .setMessage(message)
+                .setPositiveButton("OK", (dialog, which) -> dialog.dismiss())
+                .show();
+    }
+
     private void showSpreadsheetEditor(File existing, ArrayList<ArrayList<String>> data, boolean resetOriginal) {
         spreadsheetEditorOpen = true;
         currentCsvFile = existing;
@@ -4462,7 +4481,7 @@ public final class MainActivity extends Activity {
         TextView back = label("‹  Back to Spreadsheet", 16, true);
         content.addView(back);
         content.addView(label("CSV sheet editor", 23, true));
-        content.addView(label("Tap a cell to edit it. Add rows/columns as needed, then save. No formulas yet.", 13, false));
+        content.addView(label("Tap a cell to edit it. Add rows/columns as needed, then save. Formula preview supports limited arithmetic and aggregate functions.", 13, false));
         LinearLayout tools = new LinearLayout(this);
         tools.setOrientation(LinearLayout.HORIZONTAL);
         tools.addView(action("+ Row", v -> {
@@ -4479,6 +4498,7 @@ public final class MainActivity extends Activity {
             showSpreadsheetEditor(currentCsvFile, current, false);
         }), new LinearLayout.LayoutParams(0, -2, 1));
         content.addView(tools);
+        content.addView(action("Formula help", v -> showFormulaHelp()));
         content.addView(action("Preview formula results", v -> showFormulaPreview()));
         LinearLayout grid = new LinearLayout(this);
         grid.setOrientation(LinearLayout.VERTICAL);
