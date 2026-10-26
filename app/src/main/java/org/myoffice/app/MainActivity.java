@@ -477,6 +477,15 @@ public final class MainActivity extends Activity {
 
 
 
+    private void openXlsxPicker() {
+        Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT);
+        intent.addCategory(Intent.CATEGORY_OPENABLE);
+        intent.setType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+        intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION);
+        try { startActivityForResult(intent, PICK_FILE); }
+        catch (Exception e) { Toast.makeText(this, "Could not open the XLSX picker.", Toast.LENGTH_LONG).show(); }
+    }
+
     private void startCsvExport(String suggestedName, String content) {
         pendingCsvExport = content;
         Intent intent = new Intent(Intent.ACTION_CREATE_DOCUMENT);
@@ -819,6 +828,18 @@ public final class MainActivity extends Activity {
         if (mime.equals("application/pdf") || lower.endsWith(".pdf")) {
             showPdf(uri, name);
             return;
+        }
+        if (lower.endsWith(".xlsx") || mime.equals("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")) {
+            try {
+                ArrayList<ArrayList<String>> imported = readXlsxSheet(uri);
+                Toast.makeText(this, "First worksheet imported as a new local CSV sheet. The original XLSX is unchanged.", Toast.LENGTH_LONG).show();
+                showSpreadsheetEditor(null, imported, true);
+                return;
+            } catch (Exception e) {
+                Toast.makeText(this, "Could not import this XLSX. Basic first-sheet cell values are supported.", Toast.LENGTH_LONG).show();
+                showDetails(uri, name, mime);
+                return;
+            }
         }
         if (mime.equals("text/csv") || lower.endsWith(".csv")) {
             try {
@@ -2259,6 +2280,150 @@ public final class MainActivity extends Activity {
         return files;
     }
 
+    private String xlsxAttribute(Node node, String name) {
+        if (node == null || node.getAttributes() == null) return "";
+        Node attribute = node.getAttributes().getNamedItem(name);
+        return attribute == null ? "" : attribute.getNodeValue();
+    }
+
+    private int xlsxColumnIndex(String cellReference) {
+        int column = 0;
+        int i = 0;
+        while (i < cellReference.length()) {
+            char ch = Character.toUpperCase(cellReference.charAt(i));
+            if (ch < 'A' || ch > 'Z') break;
+            column = column * 26 + (ch - 'A' + 1);
+            i++;
+        }
+        return i == 0 ? -1 : column - 1;
+    }
+
+    private int xlsxRowIndex(String cellReference) {
+        int i = 0;
+        while (i < cellReference.length() && Character.isLetter(cellReference.charAt(i))) i++;
+        if (i >= cellReference.length()) return -1;
+        try { return Integer.parseInt(cellReference.substring(i)) - 1; }
+        catch (NumberFormatException ignored) { return -1; }
+    }
+
+    private String xlsxSharedStringValue(Node item, String namespace) {
+        StringBuilder value = new StringBuilder();
+        NodeList texts = ((org.w3c.dom.Element) item).getElementsByTagNameNS(namespace, "t");
+        for (int i = 0; i < texts.getLength(); i++) value.append(texts.item(i).getTextContent());
+        return value.toString();
+    }
+
+    private ArrayList<ArrayList<String>> readXlsxSheet(Uri uri) throws Exception {
+        if (sizeOf(uri) > 10L * 1024L * 1024L) throw new IllegalArgumentException("XLSX exceeds the 10 MiB import limit");
+        byte[] sharedXml = null;
+        byte[] sheetXml = null;
+        int totalUncompressed = 0;
+        InputStream source = getContentResolver().openInputStream(uri);
+        if (source == null) throw new IllegalStateException("XLSX source unavailable");
+        try (ZipInputStream zip = new ZipInputStream(source)) {
+            ZipEntry entry;
+            while ((entry = zip.getNextEntry()) != null) {
+                String entryName = entry.getName();
+                if ("xl/sharedStrings.xml".equals(entryName) || "xl/worksheets/sheet1.xml".equals(entryName)) {
+                    ByteArrayOutputStream out = new ByteArrayOutputStream();
+                    byte[] buffer = new byte[8192];
+                    int count;
+                    while ((count = zip.read(buffer)) != -1) {
+                        totalUncompressed += count;
+                        if (totalUncompressed > 8 * 1024 * 1024) throw new IllegalArgumentException("XLSX worksheet content exceeds the import limit");
+                        out.write(buffer, 0, count);
+                    }
+                    if ("xl/sharedStrings.xml".equals(entryName)) sharedXml = out.toByteArray();
+                    else sheetXml = out.toByteArray();
+                }
+            }
+        }
+        if (sheetXml == null) throw new IllegalArgumentException("XLSX first worksheet was not found");
+        String namespace = "http://schemas.openxmlformats.org/spreadsheetml/2006/main";
+        ArrayList<String> sharedStrings = new ArrayList<>();
+        if (sharedXml != null) {
+            DocumentBuilderFactory sharedFactory = DocumentBuilderFactory.newInstance();
+            sharedFactory.setNamespaceAware(true);
+            sharedFactory.setXIncludeAware(false);
+            sharedFactory.setExpandEntityReferences(false);
+            sharedFactory.setFeature("http://apache.org/xml/features/disallow-doctype-decl", true);
+            sharedFactory.setFeature("http://xml.org/sax/features/external-general-entities", false);
+            sharedFactory.setFeature("http://xml.org/sax/features/external-parameter-entities", false);
+            org.w3c.dom.Document sharedDocument = sharedFactory.newDocumentBuilder().parse(new ByteArrayInputStream(sharedXml));
+            NodeList items = sharedDocument.getElementsByTagNameNS(namespace, "si");
+            for (int i = 0; i < items.getLength(); i++) sharedStrings.add(xlsxSharedStringValue(items.item(i), namespace));
+        }
+        DocumentBuilderFactory sheetFactory = DocumentBuilderFactory.newInstance();
+        sheetFactory.setNamespaceAware(true);
+        sheetFactory.setXIncludeAware(false);
+        sheetFactory.setExpandEntityReferences(false);
+        sheetFactory.setFeature("http://apache.org/xml/features/disallow-doctype-decl", true);
+        sheetFactory.setFeature("http://xml.org/sax/features/external-general-entities", false);
+        sheetFactory.setFeature("http://xml.org/sax/features/external-parameter-entities", false);
+        org.w3c.dom.Document sheetDocument = sheetFactory.newDocumentBuilder().parse(new ByteArrayInputStream(sheetXml));
+        NodeList rowNodes = sheetDocument.getElementsByTagNameNS(namespace, "row");
+        final int maxRows = 100;
+        final int maxColumns = 30;
+        ArrayList<ArrayList<String>> rows = new ArrayList<>();
+        int maxRow = -1;
+        int maxColumn = -1;
+        ArrayList<int[]> positions = new ArrayList<>();
+        ArrayList<String> values = new ArrayList<>();
+        for (int rowNo = 0; rowNo < rowNodes.getLength(); rowNo++) {
+            Node rowNode = rowNodes.item(rowNo);
+            NodeList cells = rowNode.getChildNodes();
+            int fallbackColumn = 0;
+            for (int cellNo = 0; cellNo < cells.getLength(); cellNo++) {
+                Node cell = cells.item(cellNo);
+                if (cell.getNodeType() != Node.ELEMENT_NODE || !"c".equals(cell.getLocalName())) continue;
+                String reference = xlsxAttribute(cell, "r");
+                int rowIndex = reference.isEmpty() ? rowNo : xlsxRowIndex(reference);
+                int columnIndex = reference.isEmpty() ? fallbackColumn : xlsxColumnIndex(reference);
+                fallbackColumn = Math.max(fallbackColumn + 1, columnIndex + 1);
+                if (rowIndex < 0 || columnIndex < 0) continue;
+                if (rowIndex >= maxRows || columnIndex >= maxColumns) throw new IllegalArgumentException("XLSX exceeds the 100-row by 30-column import limit");
+                String type = xlsxAttribute(cell, "t");
+                String value = "";
+                if ("inlineStr".equals(type)) {
+                    value = xlsxSharedStringValue(cell, namespace);
+                } else {
+                    NodeList valueNodes = ((org.w3c.dom.Element) cell).getElementsByTagNameNS(namespace, "v");
+                    if (valueNodes.getLength() > 0) value = valueNodes.item(0).getTextContent();
+                    if ("s".equals(type) && !value.isEmpty()) {
+                        int index = Integer.parseInt(value);
+                        if (index >= 0 && index < sharedStrings.size()) value = sharedStrings.get(index);
+                        else value = "";
+                    } else if ("b".equals(type)) {
+                        value = "1".equals(value) ? "TRUE" : "FALSE";
+                    }
+                }
+                positions.add(new int[]{rowIndex, columnIndex});
+                values.add(value);
+                maxRow = Math.max(maxRow, rowIndex);
+                maxColumn = Math.max(maxColumn, columnIndex);
+            }
+            String rowNumber = xlsxAttribute(rowNode, "r");
+            if (!rowNumber.isEmpty()) {
+                try {
+                    int rowIndex = Integer.parseInt(rowNumber) - 1;
+                    if (rowIndex >= 0 && rowIndex < maxRows) maxRow = Math.max(maxRow, rowIndex);
+                } catch (NumberFormatException ignored) { }
+            }
+        }
+        if (maxRow < 0) return parseCsv("");
+        if (maxRow >= maxRows || maxColumn >= maxColumns) throw new IllegalArgumentException("XLSX exceeds the import limits");
+        for (int r = 0; r <= maxRow; r++) {
+            ArrayList<String> row = new ArrayList<>();
+            for (int col = 0; col <= Math.max(0, maxColumn); col++) row.add("");
+            rows.add(row);
+        }
+        for (int i = 0; i < positions.size(); i++) {
+            int[] position = positions.get(i);
+            rows.get(position[0]).set(position[1], values.get(i));
+        }
+        return rows;
+    }
+
     private String readCsvFile(File file) throws Exception {
         try (InputStream in = new FileInputStream(file);
              ByteArrayOutputStream out = new ByteArrayOutputStream()) {
@@ -2423,6 +2588,7 @@ public final class MainActivity extends Activity {
             }
             showSpreadsheetEditor(null, blank, true);
         }));
+        content.addView(action("Import XLSX", v -> openXlsxPicker()));
         EditText sheetSearch = new EditText(this);
         sheetSearch.setSingleLine(true);
         sheetSearch.setHint("Search CSV sheets");
