@@ -19,6 +19,7 @@ import android.widget.ImageView;
 import android.widget.HorizontalScrollView;
 import android.widget.LinearLayout;
 import android.widget.TableLayout;
+import android.util.Base64;
 import android.widget.ScrollView;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -48,6 +49,17 @@ public final class MainActivity extends Activity {
     private ArrayList<ArrayList<EditText>> sheetCells = new ArrayList<>();
     private File currentCsvFile;
     private String sheetOriginalSnapshot = "";
+    private static final class Slide {
+        String title;
+        String body;
+        Slide(String title, String body) { this.title = title; this.body = body; }
+    }
+    private ArrayList<Slide> deckSlides = new ArrayList<>();
+    private int deckIndex = 0;
+    private File currentDeckFile;
+    private EditText deckTitleInput;
+    private EditText deckBodyInput;
+    private String deckOriginalSnapshot = "";
 
     @Override public void onCreate(Bundle state) {
         super.onCreate(state);
@@ -100,6 +112,7 @@ public final class MainActivity extends Activity {
         page.addView(action("My notes", v -> showNotes()));
         page.addView(action("Writer: text documents", v -> showWriterList()));
         page.addView(action("Spreadsheet: CSV sheets", v -> showSpreadsheetList()));
+        page.addView(action("Presentation: slide decks", v -> showPresentationList()));
         page.addView(action("Refresh recent files", v -> { loadRecents(); showHome(); }));
         page.addView(gap(12));
         page.addView(label("Recent files", 21, true));
@@ -841,6 +854,213 @@ public final class MainActivity extends Activity {
                         .setNegativeButton("Keep editing", (dialog, which) -> dialog.dismiss())
                         .setNeutralButton("Discard", (dialog, which) -> showSpreadsheetList())
                         .setPositiveButton("Save", (dialog, which) -> saveSpreadsheet())
+                        .show();
+            }
+        });
+        ScrollView scroll = new ScrollView(this);
+        scroll.addView(content);
+        setContentView(scroll);
+    }
+
+
+    // First Presentation milestone: local text-only slide decks with navigation and persistence.
+    private File presentationDirectory() {
+        File dir = new File(getFilesDir(), "presentations");
+        if (!dir.exists()) dir.mkdirs();
+        return dir;
+    }
+
+    private File[] deckFiles() {
+        File[] files = presentationDirectory().listFiles((dir, name) -> name.endsWith(".deck"));
+        if (files == null) return new File[0];
+        Arrays.sort(files, Comparator.comparingLong(File::lastModified).reversed());
+        return files;
+    }
+
+    private String encodeDeckText(String value) {
+        return Base64.encodeToString(value.getBytes(java.nio.charset.StandardCharsets.UTF_8), Base64.NO_WRAP);
+    }
+
+    private String decodeDeckText(String value) {
+        return new String(Base64.decode(value, Base64.DEFAULT), java.nio.charset.StandardCharsets.UTF_8);
+    }
+
+    private String serializeDeck(ArrayList<Slide> slides) {
+        StringBuilder out = new StringBuilder("MYOFFICE_DECK_V1\n");
+        for (Slide slide : slides) {
+            out.append(encodeDeckText(slide.title)).append('\n');
+            out.append(encodeDeckText(slide.body)).append('\n');
+        }
+        return out.toString();
+    }
+
+    private ArrayList<Slide> readDeck(File file) throws Exception {
+        String raw;
+        try (InputStream in = new FileInputStream(file);
+             ByteArrayOutputStream out = new ByteArrayOutputStream()) {
+            byte[] buffer = new byte[4096];
+            int count;
+            while ((count = in.read(buffer)) != -1) out.write(buffer, 0, count);
+            raw = out.toString("UTF-8");
+        }
+        String[] lines = raw.split("\\n", -1);
+        if (lines.length == 0 || !lines[0].equals("MYOFFICE_DECK_V1")) throw new IllegalArgumentException("Unsupported slide deck");
+        ArrayList<Slide> slides = new ArrayList<>();
+        for (int i = 1; i + 1 < lines.length; i += 2) {
+            if (i + 1 < lines.length) slides.add(new Slide(decodeDeckText(lines[i]), decodeDeckText(lines[i + 1])));
+        }
+        if (slides.isEmpty()) slides.add(new Slide("", ""));
+        return slides;
+    }
+
+    private void showPresentationList() {
+        LinearLayout content = column();
+        TextView back = label("‹  Back to MyOffice", 16, true);
+        back.setOnClickListener(v -> showHome());
+        content.addView(back);
+        content.addView(label("Presentation · Slide decks", 25, true));
+        content.addView(label("Create simple offline text slides. Themes, images, animations and PPTX are not included yet.", 13, false));
+        content.addView(action("＋  New slide deck", v -> {
+            deckSlides = new ArrayList<>();
+            deckSlides.add(new Slide("", ""));
+            deckIndex = 0;
+            currentDeckFile = null;
+            showPresentationEditor(true);
+        }));
+        File[] files = deckFiles();
+        if (files.length == 0) {
+            content.addView(gap(12));
+            content.addView(label("No slide decks yet.", 15, false));
+        } else {
+            for (File file : files) {
+                String title = file.getName();
+                int count = 0;
+                try {
+                    ArrayList<Slide> slides = readDeck(file);
+                    count = slides.size();
+                    if (!slides.get(0).title.trim().isEmpty()) title = slides.get(0).title.trim();
+                } catch (Exception ignored) { }
+                final File selected = file;
+                LinearLayout card = new LinearLayout(this);
+                card.setOrientation(LinearLayout.VERTICAL);
+                card.setPadding(dp(12), dp(8), dp(12), dp(8));
+                card.setBackgroundColor(0xFFFFFFFF);
+                LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(-1, -2);
+                params.setMargins(0, dp(5), 0, dp(5));
+                content.addView(card, params);
+                card.addView(label(title, 17, true));
+                card.addView(label(count + " slide(s) · Modified " + DateFormat.getDateTimeInstance().format(new Date(file.lastModified())), 12, false));
+                card.setOnClickListener(v -> {
+                    try {
+                        deckSlides = readDeck(selected);
+                        deckIndex = 0;
+                        currentDeckFile = selected;
+                        showPresentationEditor(true);
+                    } catch (Exception e) {
+                        Toast.makeText(this, "Could not open this slide deck.", Toast.LENGTH_LONG).show();
+                    }
+                });
+            }
+        }
+        ScrollView scroll = new ScrollView(this);
+        scroll.addView(content);
+        setContentView(scroll);
+    }
+
+    private void syncDeckEditor() {
+        if (deckSlides.isEmpty()) deckSlides.add(new Slide("", ""));
+        if (deckTitleInput != null && deckBodyInput != null) {
+            deckSlides.get(deckIndex).title = deckTitleInput.getText().toString();
+            deckSlides.get(deckIndex).body = deckBodyInput.getText().toString();
+        }
+    }
+
+    private void savePresentation() {
+        syncDeckEditor();
+        File target = currentDeckFile;
+        if (target == null) target = new File(presentationDirectory(), "presentation_" + System.currentTimeMillis() + ".deck");
+        try (OutputStreamWriter writer = new OutputStreamWriter(new FileOutputStream(target), "UTF-8")) {
+            writer.write(serializeDeck(deckSlides));
+            writer.flush();
+            Toast.makeText(this, "Slide deck saved on this device.", Toast.LENGTH_SHORT).show();
+            showPresentationList();
+        } catch (Exception e) {
+            Toast.makeText(this, "Could not save slide deck.", Toast.LENGTH_LONG).show();
+        }
+    }
+
+    private void showPresentationEditor(boolean resetOriginal) {
+        if (deckSlides.isEmpty()) deckSlides.add(new Slide("", ""));
+        deckIndex = Math.max(0, Math.min(deckIndex, deckSlides.size() - 1));
+        Slide slide = deckSlides.get(deckIndex);
+        LinearLayout content = column();
+        TextView back = label("‹  Back to presentations", 16, true);
+        content.addView(back);
+        content.addView(label("Slide editor", 24, true));
+        content.addView(label("Text-only offline presentation. Edit a slide, add slides, then save.", 13, false));
+        content.addView(label("Slide " + (deckIndex + 1) + " of " + deckSlides.size(), 14, true));
+        content.addView(label("Slide title", 14, true));
+        deckTitleInput = new EditText(this);
+        deckTitleInput.setSingleLine(true);
+        deckTitleInput.setHint("Slide title");
+        deckTitleInput.setText(slide.title);
+        content.addView(deckTitleInput);
+        content.addView(label("Slide content", 14, true));
+        deckBodyInput = new EditText(this);
+        deckBodyInput.setGravity(Gravity.TOP | Gravity.START);
+        deckBodyInput.setMinLines(8);
+        deckBodyInput.setHint("Write the main points for this slide…");
+        deckBodyInput.setText(slide.body);
+        deckBodyInput.setInputType(android.text.InputType.TYPE_CLASS_TEXT | android.text.InputType.TYPE_TEXT_FLAG_MULTI_LINE);
+        content.addView(deckBodyInput, new LinearLayout.LayoutParams(-1, dp(250)));
+        LinearLayout navigation = new LinearLayout(this);
+        navigation.setOrientation(LinearLayout.HORIZONTAL);
+        navigation.addView(action("Previous", v -> {
+            syncDeckEditor();
+            if (deckIndex > 0) { deckIndex--; showPresentationEditor(false); }
+        }), new LinearLayout.LayoutParams(0, -2, 1));
+        navigation.addView(action("Next", v -> {
+            syncDeckEditor();
+            if (deckIndex < deckSlides.size() - 1) { deckIndex++; showPresentationEditor(false); }
+        }), new LinearLayout.LayoutParams(0, -2, 1));
+        content.addView(navigation);
+        content.addView(action("+ Add slide", v -> {
+            syncDeckEditor();
+            deckSlides.add(new Slide("", ""));
+            deckIndex = deckSlides.size() - 1;
+            showPresentationEditor(false);
+        }));
+        content.addView(action("Save slide deck", v -> savePresentation()));
+        content.addView(action("Share current slide text", v -> {
+            syncDeckEditor();
+            Slide current = deckSlides.get(deckIndex);
+            Intent share = new Intent(Intent.ACTION_SEND);
+            share.setType("text/plain");
+            share.putExtra(Intent.EXTRA_TEXT, current.title + "\n\n" + current.body);
+            try { startActivity(Intent.createChooser(share, "Share slide text")); }
+            catch (Exception e) { Toast.makeText(this, "No compatible sharing app was found.", Toast.LENGTH_LONG).show(); }
+        }));
+        content.addView(action("Discard changes", v -> new AlertDialog.Builder(this)
+                .setTitle("Discard this deck edit?")
+                .setMessage("Unsaved changes will be lost.")
+                .setNegativeButton("Keep editing", (dialog, which) -> dialog.dismiss())
+                .setPositiveButton("Discard", (dialog, which) -> showPresentationList())
+                .show()));
+        if (resetOriginal) {
+            syncDeckEditor();
+            deckOriginalSnapshot = serializeDeck(deckSlides);
+        }
+        back.setOnClickListener(v -> {
+            syncDeckEditor();
+            if (serializeDeck(deckSlides).equals(deckOriginalSnapshot)) {
+                showPresentationList();
+            } else {
+                new AlertDialog.Builder(this)
+                        .setTitle("Unsaved changes")
+                        .setMessage("Save this slide deck before leaving?")
+                        .setNegativeButton("Keep editing", (dialog, which) -> dialog.dismiss())
+                        .setNeutralButton("Discard", (dialog, which) -> showPresentationList())
+                        .setPositiveButton("Save", (dialog, which) -> savePresentation())
                         .show();
             }
         });
