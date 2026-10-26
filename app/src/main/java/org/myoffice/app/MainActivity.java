@@ -170,6 +170,16 @@ public final class MainActivity extends Activity {
         addShortcutRow(page, "Presentation", "Text slide decks", v -> showPresentationList(),
                 "Images to PDF", "Create a PDF offline", v -> openImagePicker());
         page.addView(action("Refresh recent files", v -> { loadRecents(); showHome(); }));
+        page.addView(action("Clear recent history", v -> new AlertDialog.Builder(this)
+                .setTitle("Clear recent history?")
+                .setMessage("This removes recent-file entries from MyOffice only. It does not delete any documents.")
+                .setNegativeButton("Cancel", (dialog, which) -> dialog.dismiss())
+                .setPositiveButton("Clear history", (dialog, which) -> {
+                    recentUris.clear();
+                    saveRecents();
+                    renderRecents();
+                    Toast.makeText(this, "Recent history cleared.", Toast.LENGTH_SHORT).show();
+                }).show()));
         page.addView(gap(12));
         page.addView(label("Recent files", 21, true));
         page.addView(label("Stored on this device. Files themselves are not copied.", 12, false));
