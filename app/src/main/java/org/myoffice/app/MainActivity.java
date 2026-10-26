@@ -2584,6 +2584,36 @@ public final class MainActivity extends Activity {
                 Toast.LENGTH_SHORT).show();
     }
 
+    private void applyWriterParagraphStyle(EditText body, Layout.Alignment alignment, int headingLevel) {
+        Editable editable = body.getText();
+        if (editable.length() == 0) {
+            Toast.makeText(this, "Enter text before applying a paragraph style.", Toast.LENGTH_SHORT).show();
+            return;
+        }
+        int selectionStart = Math.max(0, body.getSelectionStart());
+        int selectionEnd = Math.max(selectionStart, body.getSelectionEnd());
+        int low = Math.min(selectionStart, selectionEnd);
+        int high = Math.max(selectionStart, selectionEnd);
+        int start = editable.toString().lastIndexOf('\n', Math.max(-1, low - 1)) + 1;
+        int end = editable.toString().indexOf('\n', high);
+        if (end < 0) end = editable.length();
+        if (end <= start) end = Math.min(editable.length(), start + 1);
+        if (headingLevel >= 0) {
+            if (headingLevel == 0) {
+                editable.setSpan(new RelativeSizeSpan(1.0f), start, end, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+            } else {
+                editable.setSpan(new StyleSpan(Typeface.BOLD), start, end, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+                editable.setSpan(new RelativeSizeSpan(headingLevel == 1 ? 1.6f : 1.3f),
+                        start, end, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+            }
+        }
+        editable.setSpan(new AlignmentSpan.Standard(alignment), start, end, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+        Toast.makeText(this, headingLevel == 1 ? "Heading 1 applied."
+                : headingLevel == 2 ? "Heading 2 applied."
+                : headingLevel == 0 ? "Paragraph style applied."
+                : "Paragraph alignment applied.", Toast.LENGTH_SHORT).show();
+    }
+
     private void applyWriterSpan(EditText body, Object span) {
         int start = body.getSelectionStart();
         int end = body.getSelectionEnd();
@@ -2841,6 +2871,19 @@ public final class MainActivity extends Activity {
         formatBar.addView(action("Right", v -> body.setGravity(Gravity.TOP | Gravity.RIGHT)));
         formatScroll.addView(formatBar);
         content.addView(formatScroll);
+        content.addView(label("Paragraph & heading styles", 14, true));
+        HorizontalScrollView paragraphScroll = new HorizontalScrollView(this);
+        LinearLayout paragraphBar = new LinearLayout(this);
+        paragraphBar.setOrientation(LinearLayout.HORIZONTAL);
+        paragraphBar.addView(action("Heading 1", v -> applyWriterParagraphStyle(body, Layout.Alignment.ALIGN_NORMAL, 1)));
+        paragraphBar.addView(action("Heading 2", v -> applyWriterParagraphStyle(body, Layout.Alignment.ALIGN_NORMAL, 2)));
+        paragraphBar.addView(action("Paragraph", v -> applyWriterParagraphStyle(body, Layout.Alignment.ALIGN_NORMAL, 0)));
+        paragraphBar.addView(action("Align left", v -> applyWriterParagraphStyle(body, Layout.Alignment.ALIGN_NORMAL, -1)));
+        paragraphBar.addView(action("Center paragraph", v -> applyWriterParagraphStyle(body, Layout.Alignment.ALIGN_CENTER, -1)));
+        paragraphBar.addView(action("Align right", v -> applyWriterParagraphStyle(body, Layout.Alignment.ALIGN_OPPOSITE, -1)));
+        paragraphBar.addView(action("Justify", v -> applyWriterParagraphStyle(body, Layout.Alignment.ALIGN_JUSTIFY, -1)));
+        paragraphScroll.addView(paragraphBar);
+        content.addView(paragraphScroll);
         TextView writerStats = label("", 12, false);
         writerStats.setTextColor(0xFF536078);
         content.addView(writerStats);
