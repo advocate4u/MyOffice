@@ -54,6 +54,7 @@ An original Android office and learning app focused on free, offline-first use, 
 - Duplicate Writer document (feature F45): create a separate byte-for-byte copy of a saved plain-text Writer file.
 - PDF Save a Copy (feature F46): copy an opened PDF stream to a user-selected destination through Android's Save document picker.
 - Share entire presentation (feature F47): share all text slides in order through Android's system chooser, including slide numbers and titles.
+- PDF page rotation (feature F48): rotate the currently viewed PDF page in 90° steps for easier reading of sideways scans; rotation is a viewer-only transform and does not modify the source PDF.
 - Text import (feature F14): open a supported text file in preview and optionally edit a local copy in Writer, preserving the original source.
 - Find-in-text (feature F15): search a text preview case-insensitively and highlight matching phrases locally.
 - Formula preview (feature F16): calculate read-only SUM, AVERAGE, MIN, MAX and COUNT over simple cell ranges in the CSV grid, without changing stored formula text.
@@ -123,6 +124,7 @@ The uploaded APK has not yet been run through REA/JADX in this environment becau
 - [F45 Duplicate Writer document test plan](docs/testing/F45-duplicate-writer-test-plan.md)
 - [F46 PDF Save a Copy test plan](docs/testing/F46-pdf-save-copy-test-plan.md)
 - [F47 Share entire presentation test plan](docs/testing/F47-share-entire-presentation-test-plan.md)
+- [F48 PDF page rotation test plan](docs/testing/F48-pdf-rotation-test-plan.md)
 - [F14 Text import test plan](docs/testing/F14-text-import-test-plan.md)
 - [F15 Find-in-text test plan](docs/testing/F15-find-in-text-test-plan.md)
 - [F16 Formula preview test plan](docs/testing/F16-formula-preview-test-plan.md)
@@ -133,4 +135,4 @@ The uploaded APK has not yet been run through REA/JADX in this environment becau
 
 ## Current status
 
-F0/F1 file hub prototype, F2 offline notes, F3 basic PDF reader, F4 plain-text Writer, F5 CSV spreadsheet grid, F6 text-only presentations, F7 image-to-PDF conversion, F8 text export and F9 CSV import are in source. F2 through F8 build steps passed. F9 has been committed; CI build is triggered by the push. App label and original adaptive launcher icon are configured in the proposed 0.2.0 update. Device acceptance tests remain pending until the APK is installed and tested on Android. Work proceeds one feature at a time, with a build after each feature.
+F0/F1 file hub prototype, F2 offline notes, F3 basic PDF reader, F4 plain-text Writer, F5 CSV spreadsheet grid, F6 text-only presentations, F7 image-to-PDF conversion, F8 text export and F9 CSV import are in source. F2–F48 features listed above are implemented to varying prototype levels; the latest feature is F48 PDF page rotation. Each feature requires a successful CI build and device acceptance tests before it can be considered verified. Device acceptance tests remain pending until the APK is installed and tested on Android. Work proceeds one feature at a time, with a build after each feature.
