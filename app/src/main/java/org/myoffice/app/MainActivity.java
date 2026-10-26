@@ -1486,8 +1486,7 @@ public final class MainActivity extends Activity {
         return output;
     }
 
-    private String escapeRtfText(String text) {
-        StringBuilder rtf = new StringBuilder("{\\rtf1\\ansi\\deff0\\uc1\n");
+    private void appendRtfEscaped(StringBuilder rtf, String text) {
         for (int i = 0; i < text.length(); i++) {
             char ch = text.charAt(i);
             if (ch == '\\') rtf.append("\\\\");
@@ -1499,11 +1498,59 @@ public final class MainActivity extends Activity {
             else if (ch >= 32 && ch <= 126) rtf.append(ch);
             else rtf.append("\\u").append((short) ch).append('?');
         }
+    }
+
+    private String escapeRtfText(String text) {
+        StringBuilder rtf = new StringBuilder("{\\rtf1\\ansi\\deff0\\uc1\n");
+        appendRtfEscaped(rtf, text);
+        return rtf.append('}').toString();
+    }
+
+    private String rtfPropertiesAt(Spanned richText, int position) {
+        boolean bold = false, italic = false, underline = false, strike = false;
+        Float sizeChange = null;
+        Object[] spans = richText.getSpans(position, Math.min(richText.length(), position + 1), Object.class);
+        for (Object span : spans) {
+            if (span instanceof StyleSpan) {
+                int style = ((StyleSpan) span).getStyle();
+                if ((style & Typeface.BOLD) != 0) bold = true;
+                if ((style & Typeface.ITALIC) != 0) italic = true;
+            } else if (span instanceof UnderlineSpan) underline = true;
+            else if (span instanceof StrikethroughSpan) strike = true;
+            else if (span instanceof RelativeSizeSpan) sizeChange = ((RelativeSizeSpan) span).getSizeChange();
+        }
+        StringBuilder props = new StringBuilder();
+        if (bold) props.append("\\b ");
+        if (italic) props.append("\\i ");
+        if (underline) props.append("\\ul ");
+        if (strike) props.append("\\strike ");
+        if (sizeChange != null) props.append("\\fs").append(Math.max(4, Math.min(144, Math.round(24f * sizeChange)))).append(' ');
+        return props.toString();
+    }
+
+    private String escapeRtfRichText(Spanned richText) {
+        String plain = richText.toString();
+        StringBuilder rtf = new StringBuilder("{\\rtf1\\ansi\\deff0\\uc1\n");
+        int position = 0;
+        while (position < plain.length()) {
+            String properties = rtfPropertiesAt(richText, position);
+            int start = position;
+            while (position < plain.length() && properties.equals(rtfPropertiesAt(richText, position))) {
+                position += Character.charCount(plain.codePointAt(position));
+            }
+            rtf.append('{').append(properties);
+            appendRtfEscaped(rtf, plain.substring(start, position));
+            rtf.append('}');
+        }
         return rtf.append('}').toString();
     }
 
     private void startRtfExport(String suggestedName, String text) {
-        pendingRtfExport = escapeRtfText(text);
+        startRtfExport(suggestedName, new SpannableString(text));
+    }
+
+    private void startRtfExport(String suggestedName, Spanned richText) {
+        pendingRtfExport = escapeRtfRichText(richText);
         Intent intent = new Intent(Intent.ACTION_CREATE_DOCUMENT);
         intent.addCategory(Intent.CATEGORY_OPENABLE);
         intent.setType("application/rtf");
@@ -2871,7 +2918,7 @@ public final class MainActivity extends Activity {
         }));
         content.addView(action("Export as RTF", v -> {
             String filename = existing == null ? "MyOffice_Document.rtf" : existing.getName().replaceFirst("(?i)\\.(txt|html)$", ".rtf");
-            startRtfExport(filename, body.getText().toString());
+            startRtfExport(filename, body.getText());
         }));
         content.addView(action("Discard changes", v -> new AlertDialog.Builder(this)
                 .setTitle("Discard this edit?")
