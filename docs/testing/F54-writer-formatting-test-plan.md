@@ -21,3 +21,5 @@
 - Legacy binary `.doc` is not parsed natively. Use a compatible office app to convert it to `.docx` or `.rtf` first.
 - Device acceptance tests remain pending.
 | F54-12 | Justify a paragraph and export DOCX | Paragraph uses justified alignment in compatible Word processors |
+
+| F54-13 | Select text and apply Superscript/Subscript | Selected characters render as raised/lowered text and remain formatted in HTML/DOCX export |
