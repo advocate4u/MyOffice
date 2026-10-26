@@ -8,6 +8,7 @@ import android.content.SharedPreferences;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Paint;
+import android.graphics.Matrix;
 import android.graphics.RectF;
 import android.graphics.pdf.PdfDocument;
 import android.graphics.pdf.PdfRenderer;
@@ -67,6 +68,7 @@ public final class MainActivity extends Activity {
     private String pendingCsvExport;
     private String pendingTextExport;
     private File pendingPdfFile;
+    private int currentPdfRotationDegrees = 0;
     private Uri pendingPdfCopySource;
     private static final String PREFS = "myoffice_recent";
     private static final String KEY = "uris";
@@ -1116,6 +1118,10 @@ public final class MainActivity extends Activity {
         }), new LinearLayout.LayoutParams(0, -2, 1));
         content.addView(zoomControls);
         content.addView(zoomLabel);
+        content.addView(action("Rotate page 90°", v -> {
+            currentPdfRotationDegrees = (currentPdfRotationDegrees + 90) % 360;
+            renderPdfPage(uri, pageIndex[0], pageImage, pageLabel, pageInput, previousRef[0], nextRef[0], pageIndex, zoomLevel);
+        }));
         LinearLayout navigation = new LinearLayout(this);
         navigation.setOrientation(LinearLayout.HORIZONTAL);
         Button previous = action("Previous page", v -> {
@@ -1252,6 +1258,13 @@ public final class MainActivity extends Activity {
                     int height = Math.max(1, Math.round(page.getHeight() * scale));
                     Bitmap bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888);
                     page.render(bitmap, null, null, PdfRenderer.Page.RENDER_MODE_FOR_DISPLAY);
+                    if (currentPdfRotationDegrees != 0) {
+                        Matrix rotation = new Matrix();
+                        rotation.postRotate(currentPdfRotationDegrees);
+                        Bitmap rotated = Bitmap.createBitmap(bitmap, 0, 0, bitmap.getWidth(), bitmap.getHeight(), rotation, true);
+                        if (rotated != bitmap) bitmap.recycle();
+                        bitmap = rotated;
+                    }
                     Object old = image.getTag();
                     if (old instanceof Bitmap && old != bitmap && !((Bitmap) old).isRecycled()) {
                         ((Bitmap) old).recycle();
