@@ -32,6 +32,10 @@ android {
         }
     }
     buildTypes {
+        debug {
+            applicationIdSuffix '.debug'
+            versionNameSuffix '-debug'
+        }
         release {
             if (myAdvSigningReady) {
                 signingConfig signingConfigs.myAdv
