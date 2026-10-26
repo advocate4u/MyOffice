@@ -80,6 +80,7 @@ public final class MainActivity extends Activity {
     private ArrayList<ArrayList<EditText>> sheetCells = new ArrayList<>();
     private File currentCsvFile;
     private String sheetOriginalSnapshot = "";
+    private boolean spreadsheetEditorOpen = false;
     private static final class Slide {
         String title;
         String body;
@@ -1213,7 +1214,30 @@ public final class MainActivity extends Activity {
         return value;
     }
 
+    private void requestSpreadsheetExit() {
+        if (serializeSheet(readSheetCells()).equals(sheetOriginalSnapshot)) {
+            showSpreadsheetList();
+        } else {
+            new AlertDialog.Builder(this)
+                    .setTitle("Unsaved changes")
+                    .setMessage("Save this CSV sheet before leaving?")
+                    .setNegativeButton("Keep editing", (dialog, which) -> dialog.dismiss())
+                    .setNeutralButton("Discard", (dialog, which) -> showSpreadsheetList())
+                    .setPositiveButton("Save", (dialog, which) -> saveSpreadsheet())
+                    .show();
+        }
+    }
+
+    @Override public void onBackPressed() {
+        if (spreadsheetEditorOpen) {
+            requestSpreadsheetExit();
+            return;
+        }
+        super.onBackPressed();
+    }
+
     private void showSpreadsheetList() {
+        spreadsheetEditorOpen = false;
         LinearLayout content = column();
         TextView back = label("‹  Back to MyOffice", 16, true);
         back.setOnClickListener(v -> showHome());
@@ -1434,6 +1458,7 @@ public final class MainActivity extends Activity {
     }
 
     private void showSpreadsheetEditor(File existing, ArrayList<ArrayList<String>> data, boolean resetOriginal) {
+        spreadsheetEditorOpen = true;
         currentCsvFile = existing;
         LinearLayout content = column();
         TextView back = label("‹  Back to Spreadsheet", 16, true);
@@ -1494,19 +1519,7 @@ public final class MainActivity extends Activity {
                 .setPositiveButton("Discard", (dialog, which) -> showSpreadsheetList())
                 .show()));
         if (resetOriginal) sheetOriginalSnapshot = serializeSheet(data);
-        back.setOnClickListener(v -> {
-            if (serializeSheet(readSheetCells()).equals(sheetOriginalSnapshot)) {
-                showSpreadsheetList();
-            } else {
-                new AlertDialog.Builder(this)
-                        .setTitle("Unsaved changes")
-                        .setMessage("Save this CSV sheet before leaving?")
-                        .setNegativeButton("Keep editing", (dialog, which) -> dialog.dismiss())
-                        .setNeutralButton("Discard", (dialog, which) -> showSpreadsheetList())
-                        .setPositiveButton("Save", (dialog, which) -> saveSpreadsheet())
-                        .show();
-            }
-        });
+        back.setOnClickListener(v -> requestSpreadsheetExit());
         ScrollView scroll = new ScrollView(this);
         scroll.addView(content);
         setContentView(scroll);
