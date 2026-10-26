@@ -86,9 +86,11 @@ public final class MainActivity extends Activity {
     private static final int PICK_PDFS = 4109;
     private static final int SAVE_RTF = 4110;
     private static final int SAVE_PNG = 4111;
+    private static final int SAVE_PNG_ZIP = 4112;
     private static final int SAVE_XLSX = 4108;
     private File pendingDocxFile;
     private File pendingPngFile;
+    private File pendingPngZipFile;
     private File pendingXlsxFile;
     private String pendingCsvExport;
     private String pendingTextExport;
@@ -502,6 +504,28 @@ public final class MainActivity extends Activity {
             } catch (Exception e) {
                 temp.delete();
                 Toast.makeText(this, "Could not save the PNG image.", Toast.LENGTH_LONG).show();
+            }
+            return;
+        }
+        if (request == SAVE_PNG_ZIP) {
+            File temp = pendingPngZipFile;
+            pendingPngZipFile = null;
+            if (result != RESULT_OK || data == null || data.getData() == null || temp == null) {
+                if (temp != null) temp.delete();
+                return;
+            }
+            try (InputStream in = new FileInputStream(temp);
+                 java.io.OutputStream out = getContentResolver().openOutputStream(data.getData(), "wt")) {
+                if (out == null) throw new IllegalStateException("Destination cannot be written");
+                byte[] buffer = new byte[8192];
+                int count;
+                while ((count = in.read(buffer)) != -1) out.write(buffer, 0, count);
+                out.flush();
+                temp.delete();
+                Toast.makeText(this, "PDF pages exported as PNG files.", Toast.LENGTH_SHORT).show();
+            } catch (Exception e) {
+                temp.delete();
+                Toast.makeText(this, "Could not save the PNG ZIP.", Toast.LENGTH_LONG).show();
             }
             return;
         }
@@ -2149,6 +2173,80 @@ public final class MainActivity extends Activity {
         }
     }
 
+    // Export each PDF page as an individual PNG entry in a ZIP archive.
+    // Bound page count and render dimensions to avoid excessive memory use on phones.
+    private void exportAllPdfPagesAsPngZip(Uri source, String sourceName, int rotationDegrees) {
+        Toast.makeText(this, "Preparing PDF page images on this device…", Toast.LENGTH_SHORT).show();
+        new Thread(() -> {
+            File temp = null;
+            try (ParcelFileDescriptor descriptor = getContentResolver().openFileDescriptor(source, "r")) {
+                if (descriptor == null) throw new IllegalStateException("PDF source is unavailable");
+                PdfRenderer renderer = new PdfRenderer(descriptor);
+                try {
+                    int pageCount = renderer.getPageCount();
+                    if (pageCount < 1) throw new IllegalArgumentException("PDF has no pages");
+                    if (pageCount > 100) throw new IllegalArgumentException("For safety, PNG ZIP export supports up to 100 pages at a time");
+                    temp = File.createTempFile("myoffice_pdf_pages_", ".zip", getCacheDir());
+                    try (ZipOutputStream zip = new ZipOutputStream(new FileOutputStream(temp))) {
+                        int normalizedRotation = ((rotationDegrees % 360) + 360) % 360;
+                        for (int i = 0; i < pageCount; i++) {
+                            try (PdfRenderer.Page page = renderer.openPage(i)) {
+                                float scale = Math.min(1.8f, Math.min(1600f / page.getWidth(), 1600f / page.getHeight()));
+                                int width = Math.max(1, Math.round(page.getWidth() * scale));
+                                int height = Math.max(1, Math.round(page.getHeight() * scale));
+                                Bitmap rendered = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888);
+                                rendered.eraseColor(0xFFFFFFFF);
+                                page.render(rendered, null, null, PdfRenderer.Page.RENDER_MODE_FOR_DISPLAY);
+                                Bitmap output = rendered;
+                                if (normalizedRotation != 0) {
+                                    Matrix matrix = new Matrix();
+                                    matrix.postRotate(normalizedRotation);
+                                    output = Bitmap.createBitmap(rendered, 0, 0, rendered.getWidth(), rendered.getHeight(), matrix, true);
+                                    if (output != rendered) rendered.recycle();
+                                }
+                                try {
+                                    String entryName = String.format(Locale.ROOT, "page_%03d.png", i + 1);
+                                    zip.putNextEntry(new ZipEntry(entryName));
+                                    if (!output.compress(Bitmap.CompressFormat.PNG, 100, zip)) {
+                                        throw new IllegalStateException("PNG encoding failed");
+                                    }
+                                    zip.closeEntry();
+                                } finally {
+                                    output.recycle();
+                                }
+                            }
+                        }
+                        zip.finish();
+                    }
+                } finally {
+                    renderer.close();
+                }
+                File ready = temp;
+                runOnUiThread(() -> {
+                    if (isFinishing()) { ready.delete(); return; }
+                    pendingPngZipFile = ready;
+                    String base = sourceName.toLowerCase(Locale.ROOT).endsWith(".pdf")
+                            ? sourceName.substring(0, sourceName.length() - 4) : sourceName;
+                    Intent create = new Intent(Intent.ACTION_CREATE_DOCUMENT);
+                    create.addCategory(Intent.CATEGORY_OPENABLE);
+                    create.setType("application/zip");
+                    create.putExtra(Intent.EXTRA_TITLE, safeTextFilename(base) + "_pages_png.zip");
+                    try { startActivityForResult(create, SAVE_PNG_ZIP); }
+                    catch (Exception e) {
+                        pendingPngZipFile = null;
+                        ready.delete();
+                        Toast.makeText(this, "Could not open the Save ZIP picker.", Toast.LENGTH_LONG).show();
+                    }
+                });
+            } catch (Exception e) {
+                if (temp != null) temp.delete();
+                String message = e.getMessage() != null && e.getMessage().contains("up to 100 pages")
+                        ? "For safety, export PDFs with up to 100 pages at a time."
+                        : "Could not export PDF pages. Check that the PDF is readable and try again.";
+                runOnUiThread(() -> Toast.makeText(this, message, Toast.LENGTH_LONG).show());
+            }
+        }, "MyOffice-PDF-PNG-ZIP").start();
+    }
     // Export only the currently selected PDF page as a PNG image, honoring viewer rotation.
     // Rendering is local and performed off the UI thread.
     private void exportPdfPageAsPng(Uri source, String sourceName, int pageIndex, int rotationDegrees) {
@@ -2494,6 +2592,7 @@ public final class MainActivity extends Activity {
         }));
         content.addView(action("Export rotated PDF copy", v -> exportEditedPdfCopy(uri, name, currentPdfRotationDegrees, "")));
         content.addView(action("Export current page as PNG", v -> exportPdfPageAsPng(uri, name, pageIndex[0], currentPdfRotationDegrees)));
+        content.addView(action("Export all pages as PNG ZIP", v -> exportAllPdfPagesAsPngZip(uri, name, currentPdfRotationDegrees)));
         content.addView(action("Extract pages to new PDF", v -> {
             LinearLayout rangeFields = new LinearLayout(this);
             rangeFields.setOrientation(LinearLayout.VERTICAL);
