@@ -27,6 +27,7 @@ An original Android office and learning app focused on free, offline-first use, 
 - PDF sharing (feature F11): share a PDF opened in MyOffice through Android's share chooser, with read-only URI access.
 - Local deletion (feature F12): delete app-private notes, Writer documents, CSV sheets and slide decks after a confirmation dialog.
 - Recent-file search (feature F13): filter the recent file list by filename, case-insensitively, without uploading file data.
+- Text import (feature F14): open a supported text file in preview and optionally edit a local copy in Writer, preserving the original source.
 - No login or network permission is required for these core features.
 - Rich-text formatting, DOCX import/export, formulas, XLSX/PPTX import/export, slide themes/images/animations, camera scanning/OCR, PDF annotation/search and advanced office functionality are not implemented yet.
 
@@ -62,6 +63,7 @@ The uploaded APK has not yet been run through REA/JADX in this environment becau
 - [F11 PDF sharing test plan](docs/testing/F11-pdf-sharing-test-plan.md)
 - [F12 Local deletion test plan](docs/testing/F12-local-deletion-test-plan.md)
 - [F13 Recent-file search test plan](docs/testing/F13-recent-search-test-plan.md)
+- [F14 Text import test plan](docs/testing/F14-text-import-test-plan.md)
 
 ## Current status
 
