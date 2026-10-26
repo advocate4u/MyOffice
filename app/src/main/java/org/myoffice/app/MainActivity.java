@@ -1070,6 +1070,8 @@ public final class MainActivity extends Activity {
         SharedPreferences pdfPositions = getSharedPreferences("myoffice_pdf_positions", MODE_PRIVATE);
         String pdfPositionKey = uri.toString();
         int[] pageIndex = new int[]{Math.max(0, pdfPositions.getInt(pdfPositionKey, 0))};
+        SharedPreferences pdfRotations = getSharedPreferences("myoffice_pdf_rotations", MODE_PRIVATE);
+        currentPdfRotationDegrees = pdfRotations.getInt(pdfPositionKey, 0);
         float[] zoomLevel = new float[]{1.0f};
         EditText pageInput = new EditText(this);
         pageInput.setSingleLine(true);
@@ -1120,6 +1122,8 @@ public final class MainActivity extends Activity {
         content.addView(zoomLabel);
         content.addView(action("Rotate page 90°", v -> {
             currentPdfRotationDegrees = (currentPdfRotationDegrees + 90) % 360;
+            getSharedPreferences("myoffice_pdf_rotations", MODE_PRIVATE).edit()
+                    .putInt(uri.toString(), currentPdfRotationDegrees).apply();
             renderPdfPage(uri, pageIndex[0], pageImage, pageLabel, pageInput, previousRef[0], nextRef[0], pageIndex, zoomLevel);
         }));
         LinearLayout navigation = new LinearLayout(this);
