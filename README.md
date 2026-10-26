@@ -79,8 +79,9 @@ An original Android office and learning app focused on free, offline-first use, 
 - Slideshow (feature F17): present text-only slide decks in a read-only slide view with previous/next navigation.
 - DOCX text import (feature F18): extract paragraph text from a local DOCX package into a new Writer copy; original is unchanged.
 - DOCX basic-format import (feature F65): import supported bold/italic/underline/strikethrough, text color, highlight and font-size runs into Writer spans. Tables, images, advanced styles and full round-trip fidelity are not preserved.
-- Basic XLSX worksheet import (feature F66): import shared-string, inline-string, numeric, boolean and cached formula-result values from the first worksheet into a new local editable CSV sheet. The source XLSX remains unchanged; cell formatting, multiple worksheets and XLSX export are not yet supported.
-- DOCX paragraph alignment (feature F66): import left/center/right/justified paragraph alignment spans and write supported paragraph alignment back during DOCX export.
+- Basic XLSX worksheet import (feature F66): import shared-string, inline-string, numeric, boolean and cached formula-result values from the first worksheet into a new local editable CSV sheet. The source XLSX remains unchanged; cell formatting and multiple worksheets are not yet supported.
+- Basic XLSX workbook export (feature F68): export the current editable grid as a new single-sheet OOXML workbook with numeric values and inline text, leaving the internal CSV sheet unchanged. Cell styling, formulas and multiple-sheet export are not yet supported.
+- DOCX paragraph alignment (feature F67): import left/center/right/justified paragraph alignment spans and write supported paragraph alignment back during DOCX export.
 - DOCX export (feature F19): export Writer plain text as a minimal WordprocessingML DOCX package through Android's Save document picker.
 - DOCX formatted export (feature F64): export Writer rich-text runs with bold, italic, underline, strikethrough, text color, highlight and relative font size, plus the current left/center/right paragraph alignment. This is a focused compatibility subset, not full Word fidelity.
 - Arithmetic formula preview (feature F20): preview `=A1+B1`, subtraction, multiplication and division using numeric cell references, alongside the aggregate formulas from F16.
@@ -157,7 +158,8 @@ The uploaded APK has not yet been run through REA/JADX in this environment becau
 - [F63 PDF watermark/stamp test plan](docs/testing/F63-pdf-watermark-stamp-test-plan.md)
 - [F64 DOCX formatted export test plan](docs/testing/F64-docx-formatted-export-test-plan.md)
 - [F65 DOCX basic-format import test plan](docs/testing/F65-docx-basic-format-import-test-plan.md)
-- [F66 DOCX paragraph alignment test plan](docs/testing/F66-docx-paragraph-alignment-test-plan.md)
+- [F67 DOCX paragraph alignment test plan](docs/testing/F67-docx-paragraph-alignment-test-plan.md)
+- [F68 XLSX export test plan](docs/testing/F68-xlsx-export-test-plan.md)
 - [F67 PDF page-range extraction test plan](docs/testing/F67-pdf-page-range-extraction-test-plan.md)
 - [F14 Text import test plan](docs/testing/F14-text-import-test-plan.md)
 - [F15 Find-in-text test plan](docs/testing/F15-find-in-text-test-plan.md)
