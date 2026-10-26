@@ -12,6 +12,7 @@
 | F54-08 | Export as DOCX and open in Microsoft Word or another compatible suite | Text and supported basic character styles are readable; inspect fidelity manually |
 | F54-09 | Export as RTF | RTF file is created and opens in compatible editors |
 | F54-10 | Format Hindi and English text | Both scripts remain readable |
+| F54-11 | Apply font family and absolute font size, then export DOCX | Generated OOXML includes run font and size properties where supported |
 
 ## Compatibility limits
 
