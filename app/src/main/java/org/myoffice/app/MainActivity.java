@@ -1176,6 +1176,20 @@ public final class MainActivity extends Activity {
                 return;
             }
         }
+        if (lower.endsWith(".pptx") || mime.equals("application/vnd.openxmlformats-officedocument.presentationml.presentation")) {
+            try {
+                deckSlides = readPptxSlides(uri);
+                deckIndex = 0;
+                currentDeckFile = null;
+                Toast.makeText(this, "Imported PPTX text as a new editable local deck. Original presentation is unchanged; themes, images, animations and layouts are not preserved.", Toast.LENGTH_LONG).show();
+                showPresentationEditor(true);
+                return;
+            } catch (Exception e) {
+                Toast.makeText(this, "Could not import this PPTX. Basic slide text is supported; very large or unsupported packages may fail.", Toast.LENGTH_LONG).show();
+                showDetails(uri, name, mime);
+                return;
+            }
+        }
         boolean textFile = mime.startsWith("text/") || mime.equals("application/json")
                 || lower.endsWith(".txt") || lower.endsWith(".md") || lower.endsWith(".csv")
                 || lower.endsWith(".log") || lower.endsWith(".json") || lower.endsWith(".xml");
@@ -4446,6 +4460,79 @@ public final class MainActivity extends Activity {
             if (i + 1 < lines.length) slides.add(new Slide(decodeDeckText(lines[i]), decodeDeckText(lines[i + 1])));
         }
         if (slides.isEmpty()) slides.add(new Slide("", ""));
+        return slides;
+    }
+
+    private int pptxSlideNumber(String entryName) {
+        java.util.regex.Matcher matcher = java.util.regex.Pattern.compile("ppt/slides/slide([0-9]+)\\.xml").matcher(entryName);
+        if (!matcher.matches()) return Integer.MAX_VALUE;
+        try { return Integer.parseInt(matcher.group(1)); }
+        catch (NumberFormatException ignored) { return Integer.MAX_VALUE; }
+    }
+
+    private ArrayList<Slide> readPptxSlides(Uri uri) throws Exception {
+        if (sizeOf(uri) > 25L * 1024L * 1024L) throw new IllegalArgumentException("PPTX exceeds the 25 MiB import limit");
+        HashMap<String, byte[]> slideParts = new HashMap<>();
+        int totalExpanded = 0;
+        try (InputStream source = getContentResolver().openInputStream(uri)) {
+            if (source == null) throw new IllegalStateException("PPTX source unavailable");
+            try (ZipInputStream zip = new ZipInputStream(source)) {
+                ZipEntry entry;
+                while ((entry = zip.getNextEntry()) != null) {
+                    String name = entry.getName();
+                    if (!name.matches("ppt/slides/slide[0-9]+\\.xml")) continue;
+                    if (slideParts.size() >= 100) throw new IllegalArgumentException("PPTX exceeds the 100-slide import limit");
+                    ByteArrayOutputStream out = new ByteArrayOutputStream();
+                    byte[] buffer = new byte[8192];
+                    int count;
+                    while ((count = zip.read(buffer)) != -1) {
+                        totalExpanded += count;
+                        if (out.size() + count > 2 * 1024 * 1024 || totalExpanded > 20 * 1024 * 1024) {
+                            throw new IllegalArgumentException("PPTX slide XML exceeds the import limit");
+                        }
+                        out.write(buffer, 0, count);
+                    }
+                    slideParts.put(name, out.toByteArray());
+                }
+            }
+        }
+        if (slideParts.isEmpty()) throw new IllegalArgumentException("No PPTX slide XML was found");
+        ArrayList<String> names = new ArrayList<>(slideParts.keySet());
+        names.sort(Comparator.comparingInt(this::pptxSlideNumber));
+        DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
+        factory.setNamespaceAware(true);
+        factory.setXIncludeAware(false);
+        factory.setExpandEntityReferences(false);
+        factory.setFeature("http://apache.org/xml/features/disallow-doctype-decl", true);
+        factory.setFeature("http://xml.org/sax/features/external-general-entities", false);
+        factory.setFeature("http://xml.org/sax/features/external-parameter-entities", false);
+        String drawingNamespace = "http://schemas.openxmlformats.org/drawingml/2006/main";
+        ArrayList<Slide> slides = new ArrayList<>();
+        for (String name : names) {
+            org.w3c.dom.Document xml = factory.newDocumentBuilder().parse(new ByteArrayInputStream(slideParts.get(name)));
+            NodeList paragraphs = xml.getElementsByTagNameNS(drawingNamespace, "p");
+            ArrayList<String> textLines = new ArrayList<>();
+            for (int p = 0; p < paragraphs.getLength(); p++) {
+                Node paragraph = paragraphs.item(p);
+                if (!(paragraph instanceof org.w3c.dom.Element)) continue;
+                NodeList runs = ((org.w3c.dom.Element) paragraph).getElementsByTagNameNS(drawingNamespace, "t");
+                StringBuilder line = new StringBuilder();
+                for (int t = 0; t < runs.getLength(); t++) {
+                    String part = runs.item(t).getTextContent();
+                    if (part != null) line.append(part);
+                }
+                String value = line.toString().trim();
+                if (!value.isEmpty()) textLines.add(value);
+            }
+            String title = textLines.isEmpty() ? "Slide " + (slides.size() + 1) : textLines.get(0);
+            StringBuilder body = new StringBuilder();
+            for (int i = 1; i < textLines.size(); i++) {
+                if (body.length() > 0) body.append('\n');
+                body.append(textLines.get(i));
+            }
+            slides.add(new Slide(title, body.toString()));
+        }
+        if (slides.isEmpty()) throw new IllegalArgumentException("No readable slides found");
         return slides;
     }
 
