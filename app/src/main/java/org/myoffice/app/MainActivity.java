@@ -1284,8 +1284,48 @@ public final class MainActivity extends Activity {
         return letters.toString() + (row + 1);
     }
 
+    private Double numericCell(ArrayList<ArrayList<String>> data, int[] reference) {
+        if (reference == null || reference[0] < 0 || reference[0] >= data.size()
+                || reference[1] < 0 || reference[1] >= data.get(reference[0]).size()) return null;
+        try { return Double.parseDouble(data.get(reference[0]).get(reference[1]).trim()); }
+        catch (Exception e) { return null; }
+    }
+
+    private String formatFormulaNumber(double result) {
+        return formatFormulaNumber(result);
+    }
+
     private String evaluateAggregateFormula(String formula, ArrayList<ArrayList<String>> data) {
         String value = formula.trim();
+        if (!value.startsWith("=")) return null;
+        String expression = value.substring(1).replace(" ", "");
+        if (value.indexOf('(') < 0) {
+            int operatorIndex = -1;
+            for (int i = 1; i < expression.length(); i++) {
+                char operator = expression.charAt(i);
+                if (operator == '+' || operator == '-' || operator == '*' || operator == '/') {
+                    operatorIndex = i;
+                    break;
+                }
+            }
+            if (operatorIndex > 0 && operatorIndex < expression.length() - 1) {
+                int[] leftRef = parseCellReference(expression.substring(0, operatorIndex));
+                int[] rightRef = parseCellReference(expression.substring(operatorIndex + 1));
+                if (leftRef != null && rightRef != null) {
+                    Double left = numericCell(data, leftRef);
+                    Double right = numericCell(data, rightRef);
+                    if (left == null || right == null) return "ERROR: both referenced cells must contain numbers";
+                    char operator = expression.charAt(operatorIndex);
+                    if (operator == '/' && right == 0d) return "ERROR: division by zero";
+                    double result;
+                    if (operator == '+') result = left + right;
+                    else if (operator == '-') result = left - right;
+                    else if (operator == '*') result = left * right;
+                    else result = left / right;
+                    return formatFormulaNumber(result);
+                }
+            }
+        }
         int open = value.indexOf('(');
         int close = value.lastIndexOf(')');
         if (!value.startsWith("=") || open < 2 || close != value.length() - 1) return null;
