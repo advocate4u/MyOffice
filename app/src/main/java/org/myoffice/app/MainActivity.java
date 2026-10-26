@@ -61,6 +61,8 @@ import java.util.Comparator;
 import java.util.Collections;
 import java.util.Locale;
 import java.util.List;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 import java.util.zip.ZipOutputStream;
@@ -1017,23 +1019,24 @@ public final class MainActivity extends Activity {
     private SpannableStringBuilder readDocxRichText(Uri uri) throws Exception {
         if (sizeOf(uri) > 10L * 1024L * 1024L) throw new IllegalArgumentException("DOCX exceeds the 10 MiB import limit");
         byte[] documentXml = null;
+        byte[] numberingXml = null;
         InputStream source = getContentResolver().openInputStream(uri);
         if (source == null) throw new IllegalStateException("DOCX source unavailable");
         try (ZipInputStream zip = new ZipInputStream(source)) {
             ZipEntry entry;
             while ((entry = zip.getNextEntry()) != null) {
-                if ("word/document.xml".equals(entry.getName())) {
+                if ("word/document.xml".equals(entry.getName()) || "word/numbering.xml".equals(entry.getName())) {
                     ByteArrayOutputStream out = new ByteArrayOutputStream();
                     byte[] buffer = new byte[8192];
                     int count;
                     int total = 0;
                     while ((count = zip.read(buffer)) != -1) {
                         total += count;
-                        if (total > 5 * 1024 * 1024) throw new IllegalArgumentException("DOCX text content exceeds the import limit");
+                        if (total > 5 * 1024 * 1024) throw new IllegalArgumentException("DOCX XML part exceeds the import limit");
                         out.write(buffer, 0, count);
                     }
-                    documentXml = out.toByteArray();
-                    break;
+                    if ("word/document.xml".equals(entry.getName())) documentXml = out.toByteArray();
+                    else numberingXml = out.toByteArray();
                 }
             }
         }
@@ -1047,11 +1050,54 @@ public final class MainActivity extends Activity {
         factory.setFeature("http://xml.org/sax/features/external-parameter-entities", false);
         org.w3c.dom.Document document = factory.newDocumentBuilder().parse(new ByteArrayInputStream(documentXml));
         String wordNamespace = "http://schemas.openxmlformats.org/wordprocessingml/2006/main";
+        Map<String, String> numToAbstract = new HashMap<>();
+        Map<String, Map<Integer, String[]>> abstractLevels = new HashMap<>();
+        if (numberingXml != null) {
+            org.w3c.dom.Document numberingDocument = factory.newDocumentBuilder().parse(new ByteArrayInputStream(numberingXml));
+            NodeList nums = numberingDocument.getElementsByTagNameNS(wordNamespace, "num");
+            for (int i = 0; i < nums.getLength(); i++) {
+                Node num = nums.item(i);
+                String numId = wordAttribute(num, "numId");
+                Node child = num.getFirstChild();
+                while (child != null) {
+                    if (child.getNodeType() == Node.ELEMENT_NODE && "abstractNumId".equals(child.getLocalName())) {
+                        numToAbstract.put(numId, wordAttribute(child, "val"));
+                    }
+                    child = child.getNextSibling();
+                }
+            }
+            NodeList abstracts = numberingDocument.getElementsByTagNameNS(wordNamespace, "abstractNum");
+            for (int i = 0; i < abstracts.getLength(); i++) {
+                Node abstractNum = abstracts.item(i);
+                String abstractId = wordAttribute(abstractNum, "abstractNumId");
+                Map<Integer, String[]> levels = new HashMap<>();
+                Node level = abstractNum.getFirstChild();
+                while (level != null) {
+                    if (level.getNodeType() == Node.ELEMENT_NODE && "lvl".equals(level.getLocalName())) {
+                        int levelIndex = 0;
+                        try { levelIndex = Integer.parseInt(wordAttribute(level, "ilvl")); } catch (NumberFormatException ignored) { }
+                        String format = "decimal";
+                        String levelText = "";
+                        Node property = level.getFirstChild();
+                        while (property != null) {
+                            if (property.getNodeType() == Node.ELEMENT_NODE && "numFmt".equals(property.getLocalName())) format = wordAttribute(property, "val");
+                            if (property.getNodeType() == Node.ELEMENT_NODE && "lvlText".equals(property.getLocalName())) levelText = wordAttribute(property, "val");
+                            property = property.getNextSibling();
+                        }
+                        levels.put(levelIndex, new String[]{format, levelText});
+                    }
+                    level = level.getNextSibling();
+                }
+                abstractLevels.put(abstractId, levels);
+            }
+        }
+        Map<String, Integer> listCounters = new HashMap<>();
         NodeList paragraphs = document.getElementsByTagNameNS(wordNamespace, "p");
         SpannableStringBuilder richText = new SpannableStringBuilder();
         for (int i = 0; i < paragraphs.getLength(); i++) {
             Node paragraph = paragraphs.item(i);
             int paragraphStart = richText.length();
+            richText.append(wordParagraphListPrefix(paragraph, numToAbstract, abstractLevels, listCounters));
             appendWordRichNode(paragraph, richText);
             int paragraphEnd = richText.length();
             String alignment = wordParagraphAlignment(paragraph);
@@ -1066,6 +1112,48 @@ public final class MainActivity extends Activity {
             if (i < paragraphs.getLength() - 1) richText.append('\n');
         }
         return richText;
+    }
+
+    private String wordParagraphListPrefix(Node paragraph, Map<String, String> numToAbstract,
+                                            Map<String, Map<Integer, String[]>> abstractLevels,
+                                            Map<String, Integer> counters) {
+        Node paragraphProperties = null;
+        Node child = paragraph.getFirstChild();
+        while (child != null) {
+            if (child.getNodeType() == Node.ELEMENT_NODE && "pPr".equals(child.getLocalName())) {
+                paragraphProperties = child;
+                break;
+            }
+            child = child.getNextSibling();
+        }
+        if (paragraphProperties == null) return "";
+        Node numPr = paragraphProperties.getFirstChild();
+        while (numPr != null && !(numPr.getNodeType() == Node.ELEMENT_NODE && "numPr".equals(numPr.getLocalName()))) numPr = numPr.getNextSibling();
+        if (numPr == null) return "";
+        String numId = "";
+        int level = 0;
+        Node property = numPr.getFirstChild();
+        while (property != null) {
+            if (property.getNodeType() == Node.ELEMENT_NODE && "numId".equals(property.getLocalName())) numId = wordAttribute(property, "val");
+            if (property.getNodeType() == Node.ELEMENT_NODE && "ilvl".equals(property.getLocalName())) {
+                try { level = Integer.parseInt(wordAttribute(property, "val")); } catch (NumberFormatException ignored) { }
+            }
+            property = property.getNextSibling();
+        }
+        if (numId.isEmpty()) return "";
+        String abstractId = numToAbstract.get(numId);
+        String[] levelInfo = abstractId == null || abstractLevels.get(abstractId) == null
+                ? null : abstractLevels.get(abstractId).get(level);
+        String format = levelInfo == null ? "decimal" : levelInfo[0];
+        String marker = levelInfo == null ? "" : levelInfo[1];
+        String counterKey = numId + ":" + level;
+        if ("bullet".equalsIgnoreCase(format)) return (marker.isEmpty() ? "•" : marker) + " ";
+        int next = counters.containsKey(counterKey) ? counters.get(counterKey) + 1 : 1;
+        counters.put(counterKey, next);
+        if (marker.isEmpty()) marker = "%1.";
+        marker = marker.replace("%1", String.valueOf(next));
+        if (marker.contains("%")) marker = marker.replaceAll("%[0-9]+", String.valueOf(next));
+        return marker + " ";
     }
 
     private String wordParagraphAlignment(Node paragraph) {
