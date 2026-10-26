@@ -234,7 +234,7 @@ public final class MainActivity extends Activity {
     private String safeTextFilename(String value) {
         StringBuilder safe = new StringBuilder();
         for (char ch : value.toCharArray()) {
-            if (ch == '/' || ch == '\\\\' || ch == ':' || ch == '*' || ch == '?' || ch == '"' || ch == '<' || ch == '>' || ch == '|') {
+            if (ch == '/' || ch == '\\' || ch == ':' || ch == '*' || ch == '?' || ch == '"' || ch == '<' || ch == '>' || ch == '|') {
                 safe.append('_');
             } else {
                 safe.append(ch);
