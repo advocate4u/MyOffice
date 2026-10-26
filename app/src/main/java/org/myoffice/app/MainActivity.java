@@ -93,6 +93,7 @@ public final class MainActivity extends Activity {
         page.addView(action("＋  Open a file", v -> openPicker()));
         page.addView(action("＋  Create a note (offline)", v -> showNoteEditor(null, "", "")));
         page.addView(action("My notes", v -> showNotes()));
+        page.addView(action("Writer: text documents", v -> showWriterList()));
         page.addView(action("Refresh recent files", v -> { loadRecents(); showHome(); }));
         page.addView(gap(12));
         page.addView(label("Recent files", 21, true));
@@ -480,6 +481,136 @@ public final class MainActivity extends Activity {
             next.setEnabled(false);
             Toast.makeText(this, "PDF preview is unavailable for this file.", Toast.LENGTH_LONG).show();
         }
+    }
+
+
+    // First Writer milestone: reliable UTF-8 plain-text documents, fully local and usable offline.
+    private File writerDirectory() {
+        File dir = new File(getFilesDir(), "writer");
+        if (!dir.exists()) dir.mkdirs();
+        return dir;
+    }
+
+    private File[] writerFiles() {
+        File[] files = writerDirectory().listFiles((dir, name) -> name.endsWith(".txt"));
+        if (files == null) return new File[0];
+        Arrays.sort(files, Comparator.comparingLong(File::lastModified).reversed());
+        return files;
+    }
+
+    private String readWriterFile(File file) throws Exception {
+        try (InputStream in = new FileInputStream(file);
+             ByteArrayOutputStream out = new ByteArrayOutputStream()) {
+            byte[] buffer = new byte[8192];
+            int count;
+            while ((count = in.read(buffer)) != -1) out.write(buffer, 0, count);
+            return out.toString("UTF-8");
+        }
+    }
+
+    private void showWriterList() {
+        LinearLayout content = column();
+        TextView back = label("‹  Back to MyOffice", 16, true);
+        back.setOnClickListener(v -> showHome());
+        content.addView(back);
+        content.addView(label("Writer", 27, true));
+        content.addView(label("Create and edit plain-text documents locally. Rich formatting and DOCX are planned separately.", 13, false));
+        content.addView(action("＋  New text document", v -> showWriterEditor(null, "")));
+        File[] files = writerFiles();
+        if (files.length == 0) {
+            content.addView(gap(12));
+            content.addView(label("No Writer documents yet.", 15, false));
+        } else {
+            for (File file : files) {
+                String text;
+                try { text = readWriterFile(file); }
+                catch (Exception e) { text = ""; }
+                String firstLine = text.split("\\R", 2)[0].trim();
+                if (firstLine.isEmpty()) firstLine = "Untitled document";
+                if (firstLine.length() > 80) firstLine = firstLine.substring(0, 80) + "…";
+                String preview = text.replace('\n', ' ').trim();
+                if (preview.length() > 140) preview = preview.substring(0, 140) + "…";
+                final File selected = file;
+                LinearLayout card = new LinearLayout(this);
+                card.setOrientation(LinearLayout.VERTICAL);
+                card.setPadding(dp(12), dp(8), dp(12), dp(8));
+                card.setBackgroundColor(0xFFFFFFFF);
+                LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(-1, -2);
+                params.setMargins(0, dp(5), 0, dp(5));
+                content.addView(card, params);
+                card.addView(label(firstLine, 17, true));
+                card.addView(label(preview.isEmpty() ? "Empty document" : preview, 13, false));
+                card.addView(label("Modified " + DateFormat.getDateTimeInstance().format(new Date(file.lastModified())), 11, false));
+                card.setOnClickListener(v -> {
+                    try { showWriterEditor(selected, readWriterFile(selected)); }
+                    catch (Exception e) { Toast.makeText(this, "Could not open this document.", Toast.LENGTH_LONG).show(); }
+                });
+            }
+        }
+        ScrollView scroll = new ScrollView(this);
+        scroll.addView(content);
+        setContentView(scroll);
+    }
+
+    private void saveWriterFile(File existing, String body) {
+        File target = existing;
+        if (target == null) target = new File(writerDirectory(), "document_" + System.currentTimeMillis() + ".txt");
+        try (OutputStreamWriter writer = new OutputStreamWriter(new FileOutputStream(target), "UTF-8")) {
+            writer.write(body);
+            writer.flush();
+            Toast.makeText(this, "Document saved on this device.", Toast.LENGTH_SHORT).show();
+            showWriterList();
+        } catch (Exception e) {
+            Toast.makeText(this, "Could not save document. Check available storage.", Toast.LENGTH_LONG).show();
+        }
+    }
+
+    private void showWriterEditor(File existing, String initialText) {
+        LinearLayout content = column();
+        TextView back = label("‹  Back to Writer", 16, true);
+        content.addView(back);
+        content.addView(label("Writer · Plain text", 24, true));
+        content.addView(label("UTF-8 local document. Hindi and English are supported; changes are saved only when you tap Save.", 13, false));
+        EditText body = new EditText(this);
+        body.setGravity(Gravity.TOP | Gravity.START);
+        body.setMinLines(16);
+        body.setTextSize(16);
+        body.setHint("Start writing…");
+        body.setText(initialText);
+        body.setInputType(android.text.InputType.TYPE_CLASS_TEXT
+                | android.text.InputType.TYPE_TEXT_FLAG_MULTI_LINE
+                | android.text.InputType.TYPE_TEXT_FLAG_CAP_SENTENCES);
+        content.addView(body, new LinearLayout.LayoutParams(-1, dp(400)));
+        content.addView(action("Save document", v -> saveWriterFile(existing, body.getText().toString())));
+        content.addView(action("Share text", v -> {
+            Intent share = new Intent(Intent.ACTION_SEND);
+            share.setType("text/plain");
+            share.putExtra(Intent.EXTRA_TEXT, body.getText().toString());
+            try { startActivity(Intent.createChooser(share, "Share document text")); }
+            catch (Exception e) { Toast.makeText(this, "No compatible sharing app was found.", Toast.LENGTH_LONG).show(); }
+        }));
+        content.addView(action("Discard changes", v -> new AlertDialog.Builder(this)
+                .setTitle("Discard this edit?")
+                .setMessage("Unsaved changes will be lost.")
+                .setNegativeButton("Keep editing", (dialog, which) -> dialog.dismiss())
+                .setPositiveButton("Discard", (dialog, which) -> showWriterList())
+                .show()));
+        back.setOnClickListener(v -> {
+            if (body.getText().toString().equals(initialText)) {
+                showWriterList();
+            } else {
+                new AlertDialog.Builder(this)
+                        .setTitle("Unsaved changes")
+                        .setMessage("Save this document before leaving?")
+                        .setNegativeButton("Keep editing", (dialog, which) -> dialog.dismiss())
+                        .setNeutralButton("Discard", (dialog, which) -> showWriterList())
+                        .setPositiveButton("Save", (dialog, which) -> saveWriterFile(existing, body.getText().toString()))
+                        .show();
+            }
+        });
+        ScrollView scroll = new ScrollView(this);
+        scroll.addView(content);
+        setContentView(scroll);
     }
 
     private void renderRecents() {
