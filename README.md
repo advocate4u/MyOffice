@@ -40,6 +40,7 @@ An original Android office and learning app focused on free, offline-first use, 
 - Writer Find & Replace (feature F31): replace all exact, case-sensitive text matches in the current plain-text document and keep the result in the editor until saved.
 - Writer statistics (feature F32): display a live word count and character count as the user types or replaces text.
 - Writer Undo/Redo (feature F33): keep a bounded 50-step text snapshot history during the current editing session, with undo/redo controls and live statistics updates.
+- Writer library search (feature F34): filter local Writer documents by title, preview text or filename, case-insensitively.
 - Text import (feature F14): open a supported text file in preview and optionally edit a local copy in Writer, preserving the original source.
 - Find-in-text (feature F15): search a text preview case-insensitively and highlight matching phrases locally.
 - Formula preview (feature F16): calculate read-only SUM, AVERAGE, MIN, MAX and COUNT over simple cell ranges in the CSV grid, without changing stored formula text.
@@ -95,6 +96,7 @@ The uploaded APK has not yet been run through REA/JADX in this environment becau
 - [F31 Writer Find & Replace test plan](docs/testing/F31-writer-find-replace-test-plan.md)
 - [F32 Writer word/character count test plan](docs/testing/F32-writer-stats-test-plan.md)
 - [F33 Writer Undo/Redo test plan](docs/testing/F33-writer-undo-redo-test-plan.md)
+- [F34 Writer library search test plan](docs/testing/F34-writer-search-test-plan.md)
 - [F14 Text import test plan](docs/testing/F14-text-import-test-plan.md)
 - [F15 Find-in-text test plan](docs/testing/F15-find-in-text-test-plan.md)
 - [F16 Formula preview test plan](docs/testing/F16-formula-preview-test-plan.md)
