@@ -77,6 +77,7 @@ public final class MainActivity extends Activity {
     private int recentSortMode = 0;
     private int recentFilterMode = 0;
     private int noteSortMode = 0;
+    private int writerSortMode = 0;
     private final ArrayList<Button> recentFilterButtons = new ArrayList<>();
     private SharedPreferences prefs;
     private final ArrayList<String> recentUris = new ArrayList<>();
@@ -1275,6 +1276,12 @@ public final class MainActivity extends Activity {
         content.addView(writerSearch);
         LinearLayout writerResults = new LinearLayout(this);
         writerResults.setOrientation(LinearLayout.VERTICAL);
+        Button writerSortButton = action("Sort: Modified newest", v -> {
+            writerSortMode = (writerSortMode + 1) % 2;
+            writerSortButtonLabel(v, writerSortMode);
+            renderWriterResults(writerResults, writerSearch.getText().toString());
+        });
+        content.addView(writerSortButton);
         content.addView(writerResults);
         writerSearch.addTextChangedListener(new TextWatcher() {
             @Override public void beforeTextChanged(CharSequence s, int start, int count, int after) { }
@@ -1288,9 +1295,24 @@ public final class MainActivity extends Activity {
         setContentView(scroll);
     }
 
+    private String writerTitleForSort(File file) {
+        try {
+            String text = readWriterFile(file);
+            String firstLine = text.split("\\R", 2)[0].trim();
+            return firstLine.isEmpty() ? "Untitled document" : firstLine;
+        } catch (Exception e) {
+            return file.getName();
+        }
+    }
+
     private void renderWriterResults(LinearLayout results, String queryText) {
         results.removeAllViews();
         File[] files = writerFiles();
+        if (writerSortMode == 1) {
+            Arrays.sort(files, (left, right) -> writerTitleForSort(left).compareToIgnoreCase(writerTitleForSort(right)));
+        } else {
+            Arrays.sort(files, Comparator.comparingLong(File::lastModified).reversed());
+        }
         String query = queryText == null ? "" : queryText.trim().toLowerCase(Locale.ROOT);
         int shown = 0;
         for (File file : files) {
