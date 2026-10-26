@@ -1758,6 +1758,12 @@ public final class MainActivity extends Activity {
             card.addView(label(name, 16, true));
             card.addView(label(mime + "  •  " + sizeText(sizeOf(uri)), 12, false));
             card.addView(label("Tap to open", 11, false));
+            card.addView(action("Remove from recent", v -> {
+                recentUris.remove(value);
+                saveRecents();
+                renderRecents();
+                Toast.makeText(this, "Removed from recent history. The original file was not deleted.", Toast.LENGTH_SHORT).show();
+            }));
             card.setOnClickListener(v -> openSelected(Uri.parse(value)));
         }
         if (shown == 0) recentList.addView(label("No recent files match that name.", 14, false));
