@@ -175,6 +175,7 @@ The uploaded APK has not yet been run through REA/JADX in this environment becau
 - [F73 DOCX table text import test plan](docs/testing/F73-docx-table-text-import-test-plan.md)
 - [F74 RTF import/export test plan](docs/testing/F74-rtf-import-export-test-plan.md)
 - [F75 RTF formatting import test plan](docs/testing/F75-rtf-formatting-import-test-plan.md)
+- [F77 PDF page PNG export test plan](docs/testing/F77-pdf-page-png-export-test-plan.md)
 - [F76 RTF formatting export test plan](docs/testing/F76-rtf-formatting-export-test-plan.md)
 - [F14 Text import test plan](docs/testing/F14-text-import-test-plan.md)
 - [F15 Find-in-text test plan](docs/testing/F15-find-in-text-test-plan.md)
