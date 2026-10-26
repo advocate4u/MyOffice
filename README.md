@@ -38,6 +38,7 @@ An original Android office and learning app focused on free, offline-first use, 
 - PDF bookmarks (feature F29): save/remove page bookmarks per PDF and open a saved page from a local bookmark list.
 - PDF page notes (feature F30): create, edit and delete offline study notes attached to a specific page of a selected PDF.
 - Writer Find & Replace (feature F31): replace all exact, case-sensitive text matches in the current plain-text document and keep the result in the editor until saved.
+- Writer statistics (feature F32): display a live word count and character count as the user types or replaces text.
 - Text import (feature F14): open a supported text file in preview and optionally edit a local copy in Writer, preserving the original source.
 - Find-in-text (feature F15): search a text preview case-insensitively and highlight matching phrases locally.
 - Formula preview (feature F16): calculate read-only SUM, AVERAGE, MIN, MAX and COUNT over simple cell ranges in the CSV grid, without changing stored formula text.
@@ -91,6 +92,7 @@ The uploaded APK has not yet been run through REA/JADX in this environment becau
 - [F29 PDF bookmarks test plan](docs/testing/F29-pdf-bookmarks-test-plan.md)
 - [F30 PDF page notes test plan](docs/testing/F30-pdf-page-notes-test-plan.md)
 - [F31 Writer Find & Replace test plan](docs/testing/F31-writer-find-replace-test-plan.md)
+- [F32 Writer word/character count test plan](docs/testing/F32-writer-stats-test-plan.md)
 - [F14 Text import test plan](docs/testing/F14-text-import-test-plan.md)
 - [F15 Find-in-text test plan](docs/testing/F15-find-in-text-test-plan.md)
 - [F16 Formula preview test plan](docs/testing/F16-formula-preview-test-plan.md)
