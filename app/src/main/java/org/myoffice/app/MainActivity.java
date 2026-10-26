@@ -1309,12 +1309,54 @@ public final class MainActivity extends Activity {
             int words = trimmed.isEmpty() ? 0 : trimmed.split("\\s+").length;
             writerStats.setText(words + " words  •  " + value.length() + " characters");
         };
+        ArrayList<String> undoHistory = new ArrayList<>();
+        ArrayList<String> redoHistory = new ArrayList<>();
+        String[] beforeChange = new String[]{initialText};
+        boolean[] replayingHistory = new boolean[]{false};
         body.addTextChangedListener(new TextWatcher() {
-            @Override public void beforeTextChanged(CharSequence s, int start, int count, int after) { }
-            @Override public void onTextChanged(CharSequence s, int start, int before, int count) { updateWriterStats.run(); }
+            @Override public void beforeTextChanged(CharSequence s, int start, int count, int after) {
+                beforeChange[0] = s.toString();
+            }
+            @Override public void onTextChanged(CharSequence s, int start, int before, int count) {
+                String updated = s.toString();
+                if (!replayingHistory[0] && !beforeChange[0].equals(updated)) {
+                    undoHistory.add(beforeChange[0]);
+                    if (undoHistory.size() > 50) undoHistory.remove(0);
+                    redoHistory.clear();
+                }
+                updateWriterStats.run();
+            }
             @Override public void afterTextChanged(Editable s) { }
         });
         updateWriterStats.run();
+        LinearLayout historyActions = new LinearLayout(this);
+        historyActions.setOrientation(LinearLayout.HORIZONTAL);
+        historyActions.addView(action("Undo", v -> {
+            if (undoHistory.isEmpty()) {
+                Toast.makeText(this, "Nothing to undo.", Toast.LENGTH_SHORT).show();
+                return;
+            }
+            redoHistory.add(body.getText().toString());
+            String previous = undoHistory.remove(undoHistory.size() - 1);
+            replayingHistory[0] = true;
+            body.setText(previous);
+            body.setSelection(body.getText().length());
+            replayingHistory[0] = false;
+        }), new LinearLayout.LayoutParams(0, -2, 1));
+        historyActions.addView(action("Redo", v -> {
+            if (redoHistory.isEmpty()) {
+                Toast.makeText(this, "Nothing to redo.", Toast.LENGTH_SHORT).show();
+                return;
+            }
+            undoHistory.add(body.getText().toString());
+            if (undoHistory.size() > 50) undoHistory.remove(0);
+            String nextText = redoHistory.remove(redoHistory.size() - 1);
+            replayingHistory[0] = true;
+            body.setText(nextText);
+            body.setSelection(body.getText().length());
+            replayingHistory[0] = false;
+        }), new LinearLayout.LayoutParams(0, -2, 1));
+        content.addView(historyActions);
         content.addView(action("Find & Replace", v -> showFindReplaceDialog(body)));
         content.addView(action("Save document", v -> saveWriterFile(existing, body.getText().toString())));
         content.addView(action("Share text", v -> {
