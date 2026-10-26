@@ -5,6 +5,7 @@ import android.app.AlertDialog;
 import android.content.Intent;
 import android.content.ClipData;
 import android.content.SharedPreferences;
+import android.content.res.ColorStateList;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Canvas;
@@ -13,6 +14,7 @@ import android.graphics.Paint;
 import android.graphics.Matrix;
 import android.graphics.RectF;
 import android.graphics.Typeface;
+import android.graphics.drawable.GradientDrawable;
 import android.graphics.pdf.PdfDocument;
 import android.graphics.pdf.PdfRenderer;
 import android.database.Cursor;
@@ -240,7 +242,7 @@ public final class MainActivity extends Activity {
         TextView t = new TextView(this);
         t.setText(value);
         t.setTextSize(size);
-        t.setTextColor(0xFF202735);
+        t.setTextColor(0xFF1F2937);
         if (bold) t.setTypeface(null, android.graphics.Typeface.BOLD);
         t.setPadding(0, dp(5), 0, dp(5));
         return t;
@@ -249,8 +251,8 @@ public final class MainActivity extends Activity {
     private LinearLayout column() {
         LinearLayout l = new LinearLayout(this);
         l.setOrientation(LinearLayout.VERTICAL);
-        l.setPadding(dp(20), dp(20), dp(20), dp(24));
-        l.setBackgroundColor(0xFFF5F7FB);
+        l.setPadding(dp(16), dp(16), dp(16), dp(24));
+        l.setBackgroundColor(0xFFF4F6FA);
         return l;
     }
 
@@ -258,6 +260,10 @@ public final class MainActivity extends Activity {
         Button b = new Button(this);
         b.setText(title);
         b.setAllCaps(false);
+        b.setTextColor(0xFF174EA6);
+        b.setBackgroundTintList(ColorStateList.valueOf(0xFFE8F0FE));
+        b.setPadding(dp(12), dp(8), dp(12), dp(8));
+        b.setMinHeight(dp(44));
         b.setOnClickListener(click);
         return b;
     }
@@ -273,9 +279,15 @@ public final class MainActivity extends Activity {
         page.addView(gap(12));
         TextView intro = label("Open a document from your phone or a connected document provider. No account required.", 16, false);
         intro.setPadding(dp(14), dp(14), dp(14), dp(14));
-        intro.setBackgroundColor(0xFFFFFFFF);
+        GradientDrawable introBg = new GradientDrawable();
+        introBg.setColor(0xFFFFFFFF);
+        introBg.setCornerRadius(dp(16));
+        intro.setBackground(introBg);
         page.addView(intro);
-        page.addView(action("＋  Open a file", v -> openPicker()));
+        Button openFileButton = action("＋  Open a file", v -> openPicker());
+        openFileButton.setTextColor(0xFFFFFFFF);
+        openFileButton.setBackgroundTintList(ColorStateList.valueOf(0xFF2563EB));
+        page.addView(openFileButton);
         addShortcutRow(page, "Create note", "Quick note · Offline", v -> showNoteEditor(null, "", ""),
                 "Writer", "Text documents", v -> showWriterList());
         addShortcutRow(page, "My notes", "Saved notes", v -> showNotes(),
@@ -412,7 +424,11 @@ public final class MainActivity extends Activity {
         tile.setOrientation(LinearLayout.VERTICAL);
         tile.setGravity(Gravity.CENTER_VERTICAL);
         tile.setPadding(dp(12), dp(10), dp(12), dp(10));
-        tile.setBackgroundColor(0xFFFFFFFF);
+        GradientDrawable tileBackground = new GradientDrawable();
+        tileBackground.setColor(0xFFFFFFFF);
+        tileBackground.setCornerRadius(dp(14));
+        tileBackground.setStroke(dp(1), 0xFFE2E8F0);
+        tile.setBackground(tileBackground);
         tile.setClickable(true);
         tile.setFocusable(true);
         tile.setOnClickListener(click);
