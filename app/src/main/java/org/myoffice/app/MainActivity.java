@@ -76,6 +76,7 @@ public final class MainActivity extends Activity {
     private Button recentSortButton;
     private int recentSortMode = 0;
     private int recentFilterMode = 0;
+    private int noteSortMode = 0;
     private final ArrayList<Button> recentFilterButtons = new ArrayList<>();
     private SharedPreferences prefs;
     private final ArrayList<String> recentUris = new ArrayList<>();
@@ -819,6 +820,12 @@ public final class MainActivity extends Activity {
         noteSearch.setSingleLine(true);
         noteSearch.setHint("Search notes by title or content");
         content.addView(noteSearch);
+        Button noteSortButton = action("Sort: Modified newest", v -> {
+            noteSortMode = (noteSortMode + 1) % 2;
+            noteSortButtonLabel(v, noteSortMode);
+            renderNoteResults(noteResults, noteSearch.getText().toString());
+        });
+        content.addView(noteSortButton);
         LinearLayout noteResults = new LinearLayout(this);
         noteResults.setOrientation(LinearLayout.VERTICAL);
         content.addView(noteResults);
@@ -832,6 +839,19 @@ public final class MainActivity extends Activity {
         ScrollView scroll = new ScrollView(this);
         scroll.addView(content);
         setContentView(scroll);
+    }
+
+    private void noteSortButtonLabel(View view, int mode) {
+        if (view instanceof Button) ((Button) view).setText(mode == 0 ? "Sort: Modified newest" : "Sort: Title A–Z");
+    }
+
+    private String noteTitleForSort(File file) {
+        try {
+            String[] data = readNote(file);
+            return data[0].isEmpty() ? "Untitled note" : data[0];
+        } catch (Exception e) {
+            return file.getName();
+        }
     }
 
     private void duplicateNote(File source) {
@@ -855,6 +875,11 @@ public final class MainActivity extends Activity {
     private void renderNoteResults(LinearLayout results, String queryText) {
         results.removeAllViews();
         File[] files = noteFiles();
+        if (noteSortMode == 1) {
+            Arrays.sort(files, (left, right) -> noteTitleForSort(left).compareToIgnoreCase(noteTitleForSort(right)));
+        } else {
+            Arrays.sort(files, Comparator.comparingLong(File::lastModified).reversed());
+        }
         String query = queryText == null ? "" : queryText.trim().toLowerCase(Locale.ROOT);
         int shown = 0;
         for (File file : files) {
