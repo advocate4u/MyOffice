@@ -5,7 +5,7 @@
 Configure these repository Actions secrets only with a keystore that the project owner is authorized to use:
 
 - `MYADV_KEYSTORE_BASE64`: base64-encoded JKS/PKCS12 keystore bytes
-- `MYADV_KEYSTORE_PASSWORD`: keystore password
+- `MYADV_STORE_PASSWORD`: keystore password
 - `MYADV_KEY_ALIAS`: signing key alias
 - `MYADV_KEY_PASSWORD`: key password
 
