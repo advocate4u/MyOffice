@@ -23,6 +23,7 @@ An original Android office and learning app focused on free, offline-first use, 
 - Image-to-PDF first milestone (feature F7): select up to 20 local images, create a multi-page PDF on-device, and choose a destination through Android's Save document picker.
 - Text export (feature F8): export local notes and Writer content to a user-selected UTF-8 `.txt` file using Android's Save document picker.
 - CSV import (feature F9): open an existing local CSV into the editable grid, with a 1 MiB import limit and save-as-new behavior that leaves the original file unchanged.
+- CSV export (feature F10): export the current editable grid to a user-selected UTF-8 `.csv` file, with standard comma/quote escaping.
 - No login or network permission is required for these core features.
 - Rich-text formatting, DOCX import/export, formulas, XLSX/PPTX import/export, slide themes/images/animations, camera scanning/OCR, PDF annotation/search and advanced office functionality are not implemented yet.
 
@@ -54,6 +55,7 @@ The uploaded APK has not yet been run through REA/JADX in this environment becau
 - [F7 Image-to-PDF test plan](docs/testing/F7-image-to-pdf-test-plan.md)
 - [F8 Text export test plan](docs/testing/F8-text-export-test-plan.md)
 - [F9 CSV import test plan](docs/testing/F9-csv-import-test-plan.md)
+- [F10 CSV export test plan](docs/testing/F10-csv-export-test-plan.md)
 
 ## Current status
 
