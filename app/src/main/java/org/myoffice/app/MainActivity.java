@@ -1295,6 +1295,10 @@ public final class MainActivity extends Activity {
         setContentView(scroll);
     }
 
+    private void writerSortButtonLabel(View view, int mode) {
+        if (view instanceof Button) ((Button) view).setText(mode == 0 ? "Sort: Modified newest" : "Sort: Title A–Z");
+    }
+
     private String writerTitleForSort(File file) {
         try {
             String text = readWriterFile(file);
