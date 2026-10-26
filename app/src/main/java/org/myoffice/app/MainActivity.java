@@ -1664,16 +1664,26 @@ public final class MainActivity extends Activity {
     }
 
     private String escapeRtfText(String text) {
-        StringBuilder rtf = new StringBuilder("{\\rtf1\\ansi\\deff0\\uc1\n");
+        StringBuilder rtf = new StringBuilder("{\\rtf1\\ansi\\deff0\\uc1{\\colortbl;\\red32\\green33\\blue36;\\red211\\green47\\blue47;\\red21\\green101\\blue192;\\red46\\green125\\blue50;\\red106\\green27\\blue154;\\red255\\green255\\blue0;}\n");
         appendRtfEscaped(rtf, text);
         return rtf.append('}').toString();
+    }
+
+    private int rtfPaletteIndex(int color) {
+        int rgb = color & 0xFFFFFF;
+        if (rgb == 0xD32F2F) return 2;
+        if (rgb == 0x1565C0) return 3;
+        if (rgb == 0x2E7D32) return 4;
+        if (rgb == 0x6A1B9A) return 5;
+        if (rgb == 0xFFFF00) return 6;
+        return 1;
     }
 
     private String rtfPropertiesAt(Spanned richText, int position) {
         boolean bold = false, italic = false, underline = false, strike = false;
         boolean superscript = false, subscript = false;
         Float sizeChange = null;
-        Integer absoluteSizePx = null;
+        Integer absoluteSizePx = null, foreground = null, background = null;
         Object[] spans = richText.getSpans(position, Math.min(richText.length(), position + 1), Object.class);
         for (Object span : spans) {
             if (span instanceof StyleSpan) {
@@ -1686,6 +1696,8 @@ public final class MainActivity extends Activity {
             else if (span instanceof SubscriptSpan) subscript = true;
             else if (span instanceof AbsoluteSizeSpan) absoluteSizePx = ((AbsoluteSizeSpan) span).getSize();
             else if (span instanceof RelativeSizeSpan) sizeChange = ((RelativeSizeSpan) span).getSizeChange();
+            else if (span instanceof ForegroundColorSpan) foreground = ((ForegroundColorSpan) span).getForegroundColor();
+            else if (span instanceof BackgroundColorSpan) background = ((BackgroundColorSpan) span).getBackgroundColor();
         }
         StringBuilder props = new StringBuilder();
         if (bold) props.append("\\b ");
@@ -1694,6 +1706,8 @@ public final class MainActivity extends Activity {
         if (strike) props.append("\\strike ");
         if (superscript) props.append("\\super ");
         else if (subscript) props.append("\\sub ");
+        if (foreground != null) props.append("\\cf").append(rtfPaletteIndex(foreground)).append(' ');
+        if (background != null) props.append("\\highlight").append(rtfPaletteIndex(background)).append(' ');
         if (absoluteSizePx != null) props.append("\\fs").append(Math.max(4, Math.min(144, Math.round(absoluteSizePx * 1.5f)))).append(' ');
         else if (sizeChange != null) props.append("\\fs").append(Math.max(4, Math.min(144, Math.round(24f * sizeChange)))).append(' ');
         return props.toString();
