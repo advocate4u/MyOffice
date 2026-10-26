@@ -522,6 +522,10 @@ public final class MainActivity extends Activity {
     }
 
     private void writeXlsxFile(File target, ArrayList<ArrayList<String>> rows) throws Exception {
+        if (rows.size() > 500) throw new IllegalArgumentException("XLSX export is limited to 500 rows");
+        for (ArrayList<String> row : rows) {
+            if (row.size() > 50) throw new IllegalArgumentException("XLSX export is limited to 50 columns");
+        }
         String contentTypes = "<?xml version=\\"1.0\\" encoding=\\"UTF-8\\" standalone=\\"yes\\"?>"
                 + "<Types xmlns=\\"http://schemas.openxmlformats.org/package/2006/content-types\\">"
                 + "<Default Extension=\\"rels\\" ContentType=\\"application/vnd.openxmlformats-package.relationships+xml\\"/>"
@@ -548,7 +552,7 @@ public final class MainActivity extends Activity {
             for (int col = 0; col < row.size(); col++) {
                 String value = row.get(col) == null ? "" : row.get(col);
                 String reference = xlsxColumnName(col) + (r + 1);
-                if (value.matches("-?(?:0|[1-9][0-9]*)(?:\\\\.[0-9]+)?(?:[Ee][+-]?[0-9]+)?")
+                if (value.matches("-?(?:0|[1-9][0-9]*)(?:\\.[0-9]+)?(?:[Ee][+-]?[0-9]+)?")
                         && !value.isEmpty()) {
                     sheet.append("<c r=\\"").append(reference).append("\\"><v>")
                             .append(value).append("</v></c>");
