@@ -1,4 +1,4 @@
-name: MyOffice Android Debug APK
+name: MyOffice Android APK
 
 on:
   push:
@@ -23,13 +23,47 @@ jobs:
         uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.9'
-      - name: Build debug APK
+      - name: Prepare MyAdv signing key
+        if: ${{ secrets.MYADV_KEYSTORE_BASE64 != '' && secrets.MYADV_KEYSTORE_PASSWORD != '' && secrets.MYADV_KEY_ALIAS != '' && secrets.MYADV_KEY_PASSWORD != '' }}
+        env:
+          MYADV_KEYSTORE_BASE64: ${{ secrets.MYADV_KEYSTORE_BASE64 }}
+        run: |
+          echo "$MYADV_KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/myadv-release.jks"
+          test -s "$RUNNER_TEMP/myadv-release.jks"
+          echo "MYADV_KEYSTORE_PATH=$RUNNER_TEMP/myadv-release.jks" >> "$GITHUB_ENV"
+      - name: Build MyAdv-signed release APK
+        if: ${{ secrets.MYADV_KEYSTORE_BASE64 != '' && secrets.MYADV_KEYSTORE_PASSWORD != '' && secrets.MYADV_KEY_ALIAS != '' && secrets.MYADV_KEY_PASSWORD != '' }}
+        env:
+          MYADV_KEYSTORE_PASSWORD: ${{ secrets.MYADV_KEYSTORE_PASSWORD }}
+          MYADV_KEY_ALIAS: ${{ secrets.MYADV_KEY_ALIAS }}
+          MYADV_KEY_PASSWORD: ${{ secrets.MYADV_KEY_PASSWORD }}
+        run: gradle --no-daemon :app:assembleRelease
+      - name: Name signed APK
+        if: ${{ secrets.MYADV_KEYSTORE_BASE64 != '' && secrets.MYADV_KEYSTORE_PASSWORD != '' && secrets.MYADV_KEY_ALIAS != '' && secrets.MYADV_KEY_PASSWORD != '' }}
+        run: cp app/build/outputs/apk/release/app-release.apk app/build/outputs/apk/release/MyOffice-0.2.0-MyAdv-signed.apk
+      - name: Build debug APK (fallback when signing secrets are not configured)
+        if: ${{ !(secrets.MYADV_KEYSTORE_BASE64 != '' && secrets.MYADV_KEYSTORE_PASSWORD != '' && secrets.MYADV_KEY_ALIAS != '' && secrets.MYADV_KEY_PASSWORD != '') }}
         run: gradle --no-daemon :app:assembleDebug
-      - name: Name APK for installation
+      - name: Name debug APK
+        if: ${{ !(secrets.MYADV_KEYSTORE_BASE64 != '' && secrets.MYADV_KEYSTORE_PASSWORD != '' && secrets.MYADV_KEY_ALIAS != '' && secrets.MYADV_KEY_PASSWORD != '') }}
         run: cp app/build/outputs/apk/debug/app-debug.apk app/build/outputs/apk/debug/MyOffice-0.2.0-debug.apk
       - name: Verify APK exists
-        run: test -s app/build/outputs/apk/debug/MyOffice-0.2.0-debug.apk
-      - name: Upload APK artifact
+        run: |
+          if [ -n "$MYADV_KEYSTORE_PATH" ]; then
+            test -s app/build/outputs/apk/release/MyOffice-0.2.0-MyAdv-signed.apk
+          else
+            test -s app/build/outputs/apk/debug/MyOffice-0.2.0-debug.apk
+          fi
+      - name: Upload signed release APK
+        if: ${{ secrets.MYADV_KEYSTORE_BASE64 != '' && secrets.MYADV_KEYSTORE_PASSWORD != '' && secrets.MYADV_KEY_ALIAS != '' && secrets.MYADV_KEY_PASSWORD != '' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: MyOffice-0.2.0-MyAdv-signed-apk
+          path: app/build/outputs/apk/release/MyOffice-0.2.0-MyAdv-signed.apk
+          if-no-files-found: error
+          retention-days: 14
+      - name: Upload debug APK fallback
+        if: ${{ !(secrets.MYADV_KEYSTORE_BASE64 != '' && secrets.MYADV_KEYSTORE_PASSWORD != '' && secrets.MYADV_KEY_ALIAS != '' && secrets.MYADV_KEY_PASSWORD != '') }}
         uses: actions/upload-artifact@v4
         with:
           name: MyOffice-0.2.0-debug-apk
