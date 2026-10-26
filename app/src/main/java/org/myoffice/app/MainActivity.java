@@ -1079,6 +1079,102 @@ public final class MainActivity extends Activity {
         }
     }
 
+
+    private int[] parseCellReference(String reference) {
+        String value = reference.trim().toUpperCase(Locale.ROOT);
+        int index = 0;
+        int column = 0;
+        while (index < value.length() && value.charAt(index) >= 'A' && value.charAt(index) <= 'Z') {
+            column = column * 26 + (value.charAt(index) - 'A' + 1);
+            index++;
+        }
+        if (index == 0 || index == value.length()) return null;
+        int row;
+        try { row = Integer.parseInt(value.substring(index)); }
+        catch (NumberFormatException e) { return null; }
+        if (row < 1 || column < 1) return null;
+        return new int[]{row - 1, column - 1};
+    }
+
+    private String cellName(int row, int column) {
+        StringBuilder letters = new StringBuilder();
+        int value = column + 1;
+        while (value > 0) {
+            int remainder = (value - 1) % 26;
+            letters.insert(0, (char) ('A' + remainder));
+            value = (value - 1) / 26;
+        }
+        return letters.toString() + (row + 1);
+    }
+
+    private String evaluateAggregateFormula(String formula, ArrayList<ArrayList<String>> data) {
+        String value = formula.trim();
+        int open = value.indexOf('(');
+        int close = value.lastIndexOf(')');
+        if (!value.startsWith("=") || open < 2 || close != value.length() - 1) return null;
+        String function = value.substring(1, open).trim().toUpperCase(Locale.ROOT);
+        if (!function.equals("SUM") && !function.equals("AVERAGE")
+                && !function.equals("MIN") && !function.equals("MAX") && !function.equals("COUNT")) return null;
+        String[] range = value.substring(open + 1, close).split(":", -1);
+        if (range.length != 2) return "ERROR: use a cell range such as A1:A4";
+        int[] start = parseCellReference(range[0]);
+        int[] finish = parseCellReference(range[1]);
+        if (start == null || finish == null) return "ERROR: invalid cell range";
+        int firstRow = Math.min(start[0], finish[0]);
+        int lastRow = Math.max(start[0], finish[0]);
+        int firstCol = Math.min(start[1], finish[1]);
+        int lastCol = Math.max(start[1], finish[1]);
+        double sum = 0;
+        double min = Double.POSITIVE_INFINITY;
+        double max = Double.NEGATIVE_INFINITY;
+        int count = 0;
+        for (int r = firstRow; r <= lastRow && r < data.size(); r++) {
+            for (int col = firstCol; col <= lastCol && col < data.get(r).size(); col++) {
+                String cell = data.get(r).get(col).trim();
+                if (cell.isEmpty()) continue;
+                try {
+                    double number = Double.parseDouble(cell);
+                    sum += number;
+                    min = Math.min(min, number);
+                    max = Math.max(max, number);
+                    count++;
+                } catch (NumberFormatException ignored) { }
+            }
+        }
+        if (function.equals("COUNT")) return String.valueOf(count);
+        if (count == 0) return "ERROR: range has no numeric cells";
+        double result;
+        if (function.equals("SUM")) result = sum;
+        else if (function.equals("AVERAGE")) result = sum / count;
+        else if (function.equals("MIN")) result = min;
+        else result = max;
+        if (result == Math.rint(result) && Math.abs(result) < 9e15) return String.valueOf((long) result);
+        return String.format(Locale.ROOT, "%.6f", result).replaceAll("0+$", "").replaceAll("\\.$", "");
+    }
+
+    private void showFormulaPreview() {
+        ArrayList<ArrayList<String>> data = readSheetCells();
+        StringBuilder report = new StringBuilder();
+        int formulas = 0;
+        for (int r = 0; r < data.size(); r++) {
+            for (int col = 0; col < data.get(r).size(); col++) {
+                String value = data.get(r).get(col).trim();
+                if (!value.startsWith("=")) continue;
+                formulas++;
+                String result = evaluateAggregateFormula(value, data);
+                if (report.length() > 0) report.append("\\n");
+                report.append(cellName(r, col)).append("  ").append(value).append("  →  ")
+                        .append(result == null ? "Unsupported formula" : result);
+            }
+        }
+        if (formulas == 0) report.append("No formula cells found. Try =SUM(A1:A4), =AVERAGE(A1:A4), =MIN(A1:A4), =MAX(A1:A4), or =COUNT(A1:A4).");
+        new AlertDialog.Builder(this)
+                .setTitle("Formula preview · read-only")
+                .setMessage(report.toString())
+                .setPositiveButton("OK", (dialog, which) -> dialog.dismiss())
+                .show();
+    }
+
     private void showSpreadsheetEditor(File existing, ArrayList<ArrayList<String>> data, boolean resetOriginal) {
         currentCsvFile = existing;
         LinearLayout content = column();
@@ -1102,6 +1198,7 @@ public final class MainActivity extends Activity {
             showSpreadsheetEditor(currentCsvFile, current, false);
         }), new LinearLayout.LayoutParams(0, -2, 1));
         content.addView(tools);
+        content.addView(action("Preview formula results", v -> showFormulaPreview()));
         LinearLayout grid = new LinearLayout(this);
         grid.setOrientation(LinearLayout.VERTICAL);
         sheetCells = new ArrayList<>();
