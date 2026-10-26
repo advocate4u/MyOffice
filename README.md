@@ -35,6 +35,7 @@ An original Android office and learning app focused on free, offline-first use, 
 - PDF zoom (feature F26): increase/decrease local PDF render scale or reset to 100%, with horizontal scrolling for zoomed pages and bounded scale settings.
 - PDF page jump (feature F27): enter a one-based page number and jump directly to that page while retaining the current zoom level.
 - PDF reading position (feature F28): remember the last page viewed for each selected PDF URI locally and reopen that PDF at the saved page.
+- PDF bookmarks (feature F29): save/remove page bookmarks per PDF and open a saved page from a local bookmark list.
 - Text import (feature F14): open a supported text file in preview and optionally edit a local copy in Writer, preserving the original source.
 - Find-in-text (feature F15): search a text preview case-insensitively and highlight matching phrases locally.
 - Formula preview (feature F16): calculate read-only SUM, AVERAGE, MIN, MAX and COUNT over simple cell ranges in the CSV grid, without changing stored formula text.
@@ -85,6 +86,7 @@ The uploaded APK has not yet been run through REA/JADX in this environment becau
 - [F26 PDF zoom test plan](docs/testing/F26-pdf-zoom-test-plan.md)
 - [F27 PDF page jump test plan](docs/testing/F27-pdf-page-jump-test-plan.md)
 - [F28 PDF reading position test plan](docs/testing/F28-pdf-reading-position-test-plan.md)
+- [F29 PDF bookmarks test plan](docs/testing/F29-pdf-bookmarks-test-plan.md)
 - [F14 Text import test plan](docs/testing/F14-text-import-test-plan.md)
 - [F15 Find-in-text test plan](docs/testing/F15-find-in-text-test-plan.md)
 - [F16 Formula preview test plan](docs/testing/F16-formula-preview-test-plan.md)
