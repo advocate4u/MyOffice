@@ -49,6 +49,7 @@ An original Android office and learning app focused on free, offline-first use, 
 - Spreadsheet library search/sort (feature F40): filter saved CSV sheets by filename or first-row preview and sort by modified date or filename.
 - Presentation library search/sort (feature F41): filter saved slide decks by title, first-slide text or filename and sort by modified date or title.
 - Presentation Back protection (feature F42): Android system Back from the slide editor uses the save/discard/keep-editing prompt; system Back from slideshow returns to the editor.
+- Duplicate presentation (feature F43): create a separate copy of a local text slide deck and append “(copy)” to its first-slide title.
 - Text import (feature F14): open a supported text file in preview and optionally edit a local copy in Writer, preserving the original source.
 - Find-in-text (feature F15): search a text preview case-insensitively and highlight matching phrases locally.
 - Formula preview (feature F16): calculate read-only SUM, AVERAGE, MIN, MAX and COUNT over simple cell ranges in the CSV grid, without changing stored formula text.
@@ -113,6 +114,7 @@ The uploaded APK has not yet been run through REA/JADX in this environment becau
 - [F40 Spreadsheet library test plan](docs/testing/F40-spreadsheet-library-test-plan.md)
 - [F41 Presentation library test plan](docs/testing/F41-presentation-library-test-plan.md)
 - [F42 Presentation system Back test plan](docs/testing/F42-presentation-system-back-test-plan.md)
+- [F43 Duplicate presentation test plan](docs/testing/F43-duplicate-presentation-test-plan.md)
 - [F14 Text import test plan](docs/testing/F14-text-import-test-plan.md)
 - [F15 Find-in-text test plan](docs/testing/F15-find-in-text-test-plan.md)
 - [F16 Formula preview test plan](docs/testing/F16-formula-preview-test-plan.md)
