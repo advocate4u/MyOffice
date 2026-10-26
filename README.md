@@ -182,6 +182,7 @@ The uploaded APK has not yet been run through REA/JADX in this environment becau
 - [F78 PDF pages PNG ZIP export test plan](docs/testing/F78-pdf-pages-png-zip-test-plan.md)
 - [F79 RTF paragraph alignment export test plan](docs/testing/F79-rtf-paragraph-alignment-export-test-plan.md)
 - [F80 RTF paragraph alignment import test plan](docs/testing/F80-rtf-paragraph-alignment-import-test-plan.md)
+- [F81 PPTX text import test plan](docs/testing/F81-pptx-text-import-test-plan.md)
 - [F77 PDF page PNG export test plan](docs/testing/F77-pdf-page-png-export-test-plan.md)
 - [F76 RTF formatting export test plan](docs/testing/F76-rtf-formatting-export-test-plan.md)
 - [F14 Text import test plan](docs/testing/F14-text-import-test-plan.md)
