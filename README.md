@@ -69,7 +69,7 @@ An original Android office and learning app focused on free, offline-first use, 
 
 ## Build and APK workflow
 
-GitHub Actions builds `MyOffice-0.2.0-debug.apk` on pushes to `main` and uploads it as `MyOffice-0.2.0-debug-apk`:
+GitHub Actions builds a MyAdv-signed release APK when the four `MYADV_*` signing secrets are configured; otherwise it uploads the debug APK fallback. Workflow:
 https://github.com/advocate4u/MyOffice/actions/workflows/android-debug-apk.yml
 
 Check the latest run before claiming that a feature build succeeded. A successful CI build is not a substitute for installation and device-level acceptance testing.
