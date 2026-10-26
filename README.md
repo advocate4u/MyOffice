@@ -28,10 +28,18 @@ An original Android office and learning app focused on free, offline-first use, 
 
 ## Build and APK workflow
 
-GitHub Actions builds `app-debug.apk` on pushes to `main` and uploads it as `MyOffice-debug-apk`:
+GitHub Actions builds `MyOffice-0.2.0-debug.apk` on pushes to `main` and uploads it as `MyOffice-0.2.0-debug-apk`:
 https://github.com/advocate4u/MyOffice/actions/workflows/android-debug-apk.yml
 
 Check the latest run before claiming that a feature build succeeded. A successful CI build is not a substitute for installation and device-level acceptance testing.
+
+## WPS reverse engineering
+
+- [REA-led static preflight of uploaded WPS 18.20.2 APK](docs/reverse-engineering/REA-static-preflight-WPS-18.20.2.md)
+- [PowerShell helper to run official REA probes](scripts/re/inspect-wps.ps1)
+- Official REA project: https://github.com/morluto/rea
+
+The uploaded APK has not yet been run through REA/JADX in this environment because the pinned engine could not be downloaded here. The preflight report records static package data and a signing-identity warning; it does not claim the APK is authentic or working.
 
 ## Investigation and testing
 
@@ -49,4 +57,4 @@ Check the latest run before claiming that a feature build succeeded. A successfu
 
 ## Current status
 
-F0/F1 file hub prototype, F2 offline notes, F3 basic PDF reader, F4 plain-text Writer, F5 CSV spreadsheet grid, F6 text-only presentations, F7 image-to-PDF conversion, F8 text export and F9 CSV import are in source. F2 through F8 build steps passed. F9 has been committed; CI build is triggered by the push. Device acceptance tests remain pending until the APK is installed and tested on Android. Work proceeds one feature at a time, with a build after each feature.
+F0/F1 file hub prototype, F2 offline notes, F3 basic PDF reader, F4 plain-text Writer, F5 CSV spreadsheet grid, F6 text-only presentations, F7 image-to-PDF conversion, F8 text export and F9 CSV import are in source. F2 through F8 build steps passed. F9 has been committed; CI build is triggered by the push. App label and original adaptive launcher icon are configured in the proposed 0.2.0 update. Device acceptance tests remain pending until the APK is installed and tested on Android. Work proceeds one feature at a time, with a build after each feature.
