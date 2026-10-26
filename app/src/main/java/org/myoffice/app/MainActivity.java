@@ -1193,41 +1193,62 @@ public final class MainActivity extends Activity {
         content.addView(label("Writer", 27, true));
         content.addView(label("Create and edit plain-text documents locally. Rich formatting and DOCX are planned separately.", 13, false));
         content.addView(action("＋  New text document", v -> showWriterEditor(null, "")));
-        File[] files = writerFiles();
-        if (files.length == 0) {
-            content.addView(gap(12));
-            content.addView(label("No Writer documents yet.", 15, false));
-        } else {
-            for (File file : files) {
-                String text;
-                try { text = readWriterFile(file); }
-                catch (Exception e) { text = ""; }
-                String firstLine = text.split("\\R", 2)[0].trim();
-                if (firstLine.isEmpty()) firstLine = "Untitled document";
-                if (firstLine.length() > 80) firstLine = firstLine.substring(0, 80) + "…";
-                String preview = text.replace('\n', ' ').trim();
-                if (preview.length() > 140) preview = preview.substring(0, 140) + "…";
-                final File selected = file;
-                LinearLayout card = new LinearLayout(this);
-                card.setOrientation(LinearLayout.VERTICAL);
-                card.setPadding(dp(12), dp(8), dp(12), dp(8));
-                card.setBackgroundColor(0xFFFFFFFF);
-                LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(-1, -2);
-                params.setMargins(0, dp(5), 0, dp(5));
-                content.addView(card, params);
-                card.addView(label(firstLine, 17, true));
-                card.addView(label(preview.isEmpty() ? "Empty document" : preview, 13, false));
-                card.addView(label("Modified " + DateFormat.getDateTimeInstance().format(new Date(file.lastModified())), 11, false));
-                card.addView(action("Delete document", v -> confirmDeleteFile(selected, "document", () -> showWriterList())));
-                card.setOnClickListener(v -> {
-                    try { showWriterEditor(selected, readWriterFile(selected)); }
-                    catch (Exception e) { Toast.makeText(this, "Could not open this document.", Toast.LENGTH_LONG).show(); }
-                });
-            }
-        }
+        EditText writerSearch = new EditText(this);
+        writerSearch.setSingleLine(true);
+        writerSearch.setHint("Search Writer documents");
+        content.addView(writerSearch);
+        LinearLayout writerResults = new LinearLayout(this);
+        writerResults.setOrientation(LinearLayout.VERTICAL);
+        content.addView(writerResults);
+        writerSearch.addTextChangedListener(new TextWatcher() {
+            @Override public void beforeTextChanged(CharSequence s, int start, int count, int after) { }
+            @Override public void onTextChanged(CharSequence s, int start, int before, int count) { renderWriterResults(writerResults, s.toString()); }
+            @Override public void afterTextChanged(Editable s) { }
+        });
+        renderWriterResults(writerResults, "");
+
         ScrollView scroll = new ScrollView(this);
         scroll.addView(content);
         setContentView(scroll);
+    }
+
+    private void renderWriterResults(LinearLayout results, String queryText) {
+        results.removeAllViews();
+        File[] files = writerFiles();
+        String query = queryText == null ? "" : queryText.trim().toLowerCase(Locale.ROOT);
+        int shown = 0;
+        for (File file : files) {
+            String text;
+            try { text = readWriterFile(file); }
+            catch (Exception e) { text = ""; }
+            String firstLine = text.split("\\R", 2)[0].trim();
+            if (firstLine.isEmpty()) firstLine = "Untitled document";
+            String preview = text.replace('\n', ' ').trim();
+            String searchable = (firstLine + " " + preview + " " + file.getName()).toLowerCase(Locale.ROOT);
+            if (!query.isEmpty() && !searchable.contains(query)) continue;
+            shown++;
+            if (firstLine.length() > 80) firstLine = firstLine.substring(0, 80) + "…";
+            if (preview.length() > 140) preview = preview.substring(0, 140) + "…";
+            final File selected = file;
+            LinearLayout card = new LinearLayout(this);
+            card.setOrientation(LinearLayout.VERTICAL);
+            card.setPadding(dp(12), dp(8), dp(12), dp(8));
+            card.setBackgroundColor(0xFFFFFFFF);
+            LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(-1, -2);
+            params.setMargins(0, dp(5), 0, dp(5));
+            results.addView(card, params);
+            card.addView(label(firstLine, 17, true));
+            card.addView(label(preview.isEmpty() ? "Empty document" : preview, 13, false));
+            card.addView(label("Modified " + DateFormat.getDateTimeInstance().format(new Date(file.lastModified())), 11, false));
+            card.addView(action("Delete document", v -> confirmDeleteFile(selected, "document", () -> showWriterList())));
+            card.setOnClickListener(v -> {
+                try { showWriterEditor(selected, readWriterFile(selected)); }
+                catch (Exception e) { Toast.makeText(this, "Could not open this document.", Toast.LENGTH_LONG).show(); }
+            });
+        }
+        if (shown == 0) {
+            results.addView(label(query.isEmpty() ? "No Writer documents yet." : "No documents match your search.", 15, false));
+        }
     }
 
     private void saveWriterFile(File existing, String body) {
