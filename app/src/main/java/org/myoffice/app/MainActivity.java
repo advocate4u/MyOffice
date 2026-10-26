@@ -15,6 +15,7 @@ import android.graphics.pdf.PdfRenderer;
 import android.database.Cursor;
 import android.net.Uri;
 import android.os.Bundle;
+import android.os.SystemClock;
 import android.os.ParcelFileDescriptor;
 import android.provider.OpenableColumns;
 import android.view.Gravity;
@@ -74,6 +75,10 @@ public final class MainActivity extends Activity {
     private static final String KEY = "uris";
     private static final int MAX_RECENTS = 12;
     private static final String NOTE_PREFIX = "MYOFFICE_NOTE_TITLE:";
+    private View currentRootView;
+    private final ArrayList<View> navigationHistory = new ArrayList<>();
+    private boolean restoringBackNavigation = false;
+    private long lastBackPressedAt = 0L;
     private LinearLayout page;
     private LinearLayout recentList;
     private EditText recentSearchInput;
@@ -143,7 +148,7 @@ public final class MainActivity extends Activity {
     private void showHome() {
         page = column();
         page.addView(label("MyOffice", 29, true));
-        TextView subtitle = label("Your files. Your learning. Offline.", 15, false);
+        TextView subtitle = label("Your files. Your learning. Offline.  •  By MyAdv", 15, false);
         subtitle.setTextColor(0xFF536078);
         page.addView(subtitle);
         page.addView(gap(12));
