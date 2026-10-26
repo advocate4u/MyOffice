@@ -885,7 +885,7 @@ public final class MainActivity extends Activity {
         String plain = richText.toString();
         int position = start;
         while (position < end) {
-            if (plain.charAt(position) == '\t') {
+            if (plain.charAt(position) == '\n') {
                 document.append("<w:r><w:tab/></w:r>");
                 position++;
                 continue;
@@ -1731,17 +1731,17 @@ public final class MainActivity extends Activity {
         StringBuilder rtf = new StringBuilder("{\\rtf1\\ansi\\deff0\\uc1\n");
         int position = 0;
         while (position < plain.length()) {
-            if (position == 0 || plain.charAt(position - 1) == '\\n') {
+            if (position == 0 || plain.charAt(position - 1) == '\n') {
                 rtf.append(rtfParagraphAlignmentAt(richText, position));
             }
-            if (plain.charAt(position) == '\\n') {
+            if (plain.charAt(position) == '\n') {
                 rtf.append("\\par\n");
                 position++;
                 continue;
             }
             String properties = rtfPropertiesAt(richText, position);
             int start = position;
-            while (position < plain.length() && plain.charAt(position) != '\\n'
+            while (position < plain.length() && plain.charAt(position) != '\n'
                     && properties.equals(rtfPropertiesAt(richText, position))) {
                 position += Character.charCount(plain.codePointAt(position));
             }
