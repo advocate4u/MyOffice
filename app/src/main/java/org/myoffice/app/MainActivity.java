@@ -2616,6 +2616,23 @@ public final class MainActivity extends Activity {
                 Toast.LENGTH_SHORT).show();
     }
 
+    private void showWriterFontSizeDialog(EditText body) {
+        final String[] sizes = new String[]{"8 sp", "10 sp", "12 sp", "14 sp", "16 sp", "18 sp", "20 sp", "24 sp", "28 sp", "32 sp"};
+        final int[] values = new int[]{8, 10, 12, 14, 16, 18, 20, 24, 28, 32};
+        new AlertDialog.Builder(this)
+                .setTitle("Font size")
+                .setItems(sizes, (dialog, which) -> {
+                    int start = body.getSelectionStart();
+                    int end = body.getSelectionEnd();
+                    if (start < 0 || end < 0 || start == end) {
+                        Toast.makeText(this, "Select text first, then choose a font size.", Toast.LENGTH_SHORT).show();
+                        return;
+                    }
+                    body.getText().setSpan(new AbsoluteSizeSpan(values[which], true),
+                            Math.min(start, end), Math.max(start, end), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+                }).show();
+    }
+
     private void applyWriterParagraphStyle(EditText body, Layout.Alignment alignment, int headingLevel) {
         Editable editable = body.getText();
         if (editable.length() == 0) {
@@ -2893,6 +2910,10 @@ public final class MainActivity extends Activity {
         formatBar.addView(action("Strike", v -> applyWriterSpan(body, new StrikethroughSpan())));
         formatBar.addView(action("Bigger", v -> applyWriterSpan(body, new RelativeSizeSpan(1.25f))));
         formatBar.addView(action("Smaller", v -> applyWriterSpan(body, new RelativeSizeSpan(0.85f))));
+        formatBar.addView(action("Font size", v -> showWriterFontSizeDialog(body)));
+        formatBar.addView(action("Serif", v -> applyWriterSpan(body, new TypefaceSpan("serif"))));
+        formatBar.addView(action("Sans", v -> applyWriterSpan(body, new TypefaceSpan("sans-serif"))));
+        formatBar.addView(action("Monospace", v -> applyWriterSpan(body, new TypefaceSpan("monospace"))));
         formatBar.addView(action("Red", v -> applyWriterSpan(body, new ForegroundColorSpan(0xFFD32F2F))));
         formatBar.addView(action("Blue", v -> applyWriterSpan(body, new ForegroundColorSpan(0xFF1565C0))));
         formatBar.addView(action("Highlight", v -> applyWriterSpan(body, new BackgroundColorSpan(0xFFFFFF00))));
