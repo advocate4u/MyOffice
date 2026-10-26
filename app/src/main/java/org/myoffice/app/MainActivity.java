@@ -4544,7 +4544,7 @@ public final class MainActivity extends Activity {
         back.setOnClickListener(v -> showHome());
         content.addView(back);
         content.addView(label("Presentation · Slide decks", 25, true));
-        content.addView(label("Create simple offline text slides. Themes, images, animations and PPTX are not included yet.", 13, false));
+        content.addView(label("Create offline text slides or import basic PPTX slide text. Themes, images, animations and PPTX export are not included yet.", 13, false));
         content.addView(action("＋  New slide deck", v -> {
             deckSlides = new ArrayList<>();
             deckSlides.add(new Slide("", ""));
