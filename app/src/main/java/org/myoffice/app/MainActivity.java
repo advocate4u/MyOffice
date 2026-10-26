@@ -947,20 +947,43 @@ public final class MainActivity extends Activity {
         pageImage.setAdjustViewBounds(true);
         pageImage.setScaleType(ImageView.ScaleType.FIT_CENTER);
         pageImage.setBackgroundColor(0xFFFFFFFF);
-        LinearLayout.LayoutParams imageParams = new LinearLayout.LayoutParams(-1, dp(520));
-        content.addView(pageImage, imageParams);
+        HorizontalScrollView pdfHorizontal = new HorizontalScrollView(this);
+        pdfHorizontal.setFillViewport(true);
+        pdfHorizontal.addView(pageImage, new HorizontalScrollView.LayoutParams(-2, -2));
+        content.addView(pdfHorizontal, new LinearLayout.LayoutParams(-1, dp(520)));
         int[] pageIndex = new int[]{0};
+        float[] zoomLevel = new float[]{1.0f};
+        TextView zoomLabel = label("Zoom 100%", 12, false);
+        LinearLayout zoomControls = new LinearLayout(this);
+        zoomControls.setOrientation(LinearLayout.HORIZONTAL);
+        zoomControls.addView(action("−", v -> {
+            zoomLevel[0] = Math.max(0.75f, zoomLevel[0] - 0.25f);
+            zoomLabel.setText("Zoom " + Math.round(zoomLevel[0] * 100) + "%");
+            renderPdfPage(uri, pageIndex[0], pageImage, pageLabel, previousRef[0], nextRef[0], pageIndex, zoomLevel);
+        }), new LinearLayout.LayoutParams(0, -2, 1));
+        zoomControls.addView(action("100%", v -> {
+            zoomLevel[0] = 1.0f;
+            zoomLabel.setText("Zoom 100%");
+            renderPdfPage(uri, pageIndex[0], pageImage, pageLabel, previousRef[0], nextRef[0], pageIndex, zoomLevel);
+        }), new LinearLayout.LayoutParams(0, -2, 1));
+        zoomControls.addView(action("+", v -> {
+            zoomLevel[0] = Math.min(2.0f, zoomLevel[0] + 0.25f);
+            zoomLabel.setText("Zoom " + Math.round(zoomLevel[0] * 100) + "%");
+            renderPdfPage(uri, pageIndex[0], pageImage, pageLabel, previousRef[0], nextRef[0], pageIndex, zoomLevel);
+        }), new LinearLayout.LayoutParams(0, -2, 1));
+        content.addView(zoomControls);
+        content.addView(zoomLabel);
         LinearLayout navigation = new LinearLayout(this);
         navigation.setOrientation(LinearLayout.HORIZONTAL);
         Button previous = action("Previous page", v -> {
             if (pageIndex[0] > 0) {
                 pageIndex[0]--;
-                renderPdfPage(uri, pageIndex[0], pageImage, pageLabel, previousRef[0], nextRef[0], pageIndex);
+                renderPdfPage(uri, pageIndex[0], pageImage, pageLabel, previousRef[0], nextRef[0], pageIndex, zoomLevel);
             }
         });
         Button next = action("Next page", v -> {
             pageIndex[0]++;
-            renderPdfPage(uri, pageIndex[0], pageImage, pageLabel, previousRef[0], nextRef[0], pageIndex);
+            renderPdfPage(uri, pageIndex[0], pageImage, pageLabel, previousRef[0], nextRef[0], pageIndex, zoomLevel);
         });
         previousRef[0] = previous;
         nextRef[0] = next;
@@ -980,14 +1003,14 @@ public final class MainActivity extends Activity {
         ScrollView scroll = new ScrollView(this);
         scroll.addView(content);
         setContentView(scroll);
-        renderPdfPage(uri, 0, pageImage, pageLabel, previous, next, pageIndex);
+        renderPdfPage(uri, 0, pageImage, pageLabel, previous, next, pageIndex, zoomLevel);
     }
 
     private final Button[] previousRef = new Button[1];
     private final Button[] nextRef = new Button[1];
 
     private void renderPdfPage(Uri uri, int requestedPage, ImageView image, TextView pageLabel,
-                               Button previous, Button next, int[] pageIndex) {
+                               Button previous, Button next, int[] pageIndex, float[] zoomLevel) {
         try (ParcelFileDescriptor descriptor = getContentResolver().openFileDescriptor(uri, "r")) {
             if (descriptor == null) throw new IllegalStateException("PDF source is unavailable");
             try (PdfRenderer renderer = new PdfRenderer(descriptor)) {
@@ -995,7 +1018,7 @@ public final class MainActivity extends Activity {
                 if (pageCount <= 0) throw new IllegalStateException("This PDF has no pages");
                 int index = Math.max(0, Math.min(requestedPage, pageCount - 1));
                 try (PdfRenderer.Page page = renderer.openPage(index)) {
-                    float scale = Math.min(2.0f, Math.min(1400f / page.getWidth(), 1800f / page.getHeight()));
+                    float scale = Math.min(2.0f, Math.min(1400f / page.getWidth(), 1800f / page.getHeight())) * zoomLevel[0];
                     int width = Math.max(1, Math.round(page.getWidth() * scale));
                     int height = Math.max(1, Math.round(page.getHeight() * scale));
                     Bitmap bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888);
