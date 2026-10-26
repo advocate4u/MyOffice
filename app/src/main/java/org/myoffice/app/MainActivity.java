@@ -82,8 +82,10 @@ public final class MainActivity extends Activity {
     private static final int SAVE_PDF_COPY = 4107;
     private static final int PICK_PDFS = 4109;
     private static final int SAVE_RTF = 4110;
+    private static final int SAVE_PNG = 4111;
     private static final int SAVE_XLSX = 4108;
     private File pendingDocxFile;
+    private File pendingPngFile;
     private File pendingXlsxFile;
     private String pendingCsvExport;
     private String pendingTextExport;
