@@ -982,12 +982,12 @@ public final class MainActivity extends Activity {
         zoomControls.addView(action("100%", v -> {
             zoomLevel[0] = 1.0f;
             zoomLabel.setText("Zoom 100%");
-            renderPdfPage(uri, pageIndex[0], pageImage, pageLabel, previousRef[0], nextRef[0], pageIndex, zoomLevel);
+            renderPdfPage(uri, pageIndex[0], pageImage, pageLabel, pageInput, previousRef[0], nextRef[0], pageIndex, zoomLevel);
         }), new LinearLayout.LayoutParams(0, -2, 1));
         zoomControls.addView(action("+", v -> {
             zoomLevel[0] = Math.min(2.0f, zoomLevel[0] + 0.25f);
             zoomLabel.setText("Zoom " + Math.round(zoomLevel[0] * 100) + "%");
-            renderPdfPage(uri, pageIndex[0], pageImage, pageLabel, previousRef[0], nextRef[0], pageIndex, zoomLevel);
+            renderPdfPage(uri, pageIndex[0], pageImage, pageLabel, pageInput, previousRef[0], nextRef[0], pageIndex, zoomLevel);
         }), new LinearLayout.LayoutParams(0, -2, 1));
         content.addView(zoomControls);
         content.addView(zoomLabel);
@@ -996,12 +996,12 @@ public final class MainActivity extends Activity {
         Button previous = action("Previous page", v -> {
             if (pageIndex[0] > 0) {
                 pageIndex[0]--;
-                renderPdfPage(uri, pageIndex[0], pageImage, pageLabel, previousRef[0], nextRef[0], pageIndex, zoomLevel);
+                renderPdfPage(uri, pageIndex[0], pageImage, pageLabel, pageInput, previousRef[0], nextRef[0], pageIndex, zoomLevel);
             }
         });
         Button next = action("Next page", v -> {
             pageIndex[0]++;
-            renderPdfPage(uri, pageIndex[0], pageImage, pageLabel, previousRef[0], nextRef[0], pageIndex, zoomLevel);
+            renderPdfPage(uri, pageIndex[0], pageImage, pageLabel, pageInput, previousRef[0], nextRef[0], pageIndex, zoomLevel);
         });
         previousRef[0] = previous;
         nextRef[0] = next;
