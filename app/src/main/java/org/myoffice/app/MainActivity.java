@@ -195,6 +195,8 @@ public final class MainActivity extends Activity {
         boolean italic;
         boolean underline;
         boolean strike;
+        boolean superscript;
+        boolean subscript;
         float sizeRatio = 1.0f;
         RtfStyleState copy() {
             RtfStyleState copy = new RtfStyleState();
@@ -202,11 +204,13 @@ public final class MainActivity extends Activity {
             copy.italic = italic;
             copy.underline = underline;
             copy.strike = strike;
+            copy.superscript = superscript;
+            copy.subscript = subscript;
             copy.sizeRatio = sizeRatio;
             return copy;
         }
         void reset() {
-            bold = false; italic = false; underline = false; strike = false; sizeRatio = 1.0f;
+            bold = false; italic = false; underline = false; strike = false; superscript = false; subscript = false; sizeRatio = 1.0f;
         }
     }
     private ArrayList<Slide> deckSlides = new ArrayList<>();
@@ -1513,6 +1517,8 @@ public final class MainActivity extends Activity {
         if (style.italic) output.setSpan(new StyleSpan(Typeface.ITALIC), start, end, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
         if (style.underline) output.setSpan(new UnderlineSpan(), start, end, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
         if (style.strike) output.setSpan(new StrikethroughSpan(), start, end, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+        if (style.superscript) output.setSpan(new SuperscriptSpan(), start, end, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+        if (style.subscript) output.setSpan(new SubscriptSpan(), start, end, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
         if (Math.abs(style.sizeRatio - 1.0f) > 0.01f) output.setSpan(new RelativeSizeSpan(style.sizeRatio), start, end, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
     }
 
@@ -1626,6 +1632,9 @@ public final class MainActivity extends Activity {
             else if ("ul".equals(word) || "uld".equals(word) || "ulw".equals(word)) style.underline = parameter == null || parameter != 0;
             else if ("ulnone".equals(word)) style.underline = false;
             else if ("strike".equals(word) || "striked".equals(word)) style.strike = parameter == null || parameter != 0;
+            else if ("super".equals(word)) { style.superscript = true; style.subscript = false; }
+            else if ("sub".equals(word)) { style.subscript = true; style.superscript = false; }
+            else if ("nosupersub".equals(word)) { style.superscript = false; style.subscript = false; }
             else if ("fs".equals(word) && parameter != null) {
                 float ratio = parameter / 24f;
                 if (ratio > 0.2f && ratio < 6f) style.sizeRatio = ratio;
@@ -1662,6 +1671,7 @@ public final class MainActivity extends Activity {
 
     private String rtfPropertiesAt(Spanned richText, int position) {
         boolean bold = false, italic = false, underline = false, strike = false;
+        boolean superscript = false, subscript = false;
         Float sizeChange = null;
         Object[] spans = richText.getSpans(position, Math.min(richText.length(), position + 1), Object.class);
         for (Object span : spans) {
@@ -1671,6 +1681,8 @@ public final class MainActivity extends Activity {
                 if ((style & Typeface.ITALIC) != 0) italic = true;
             } else if (span instanceof UnderlineSpan) underline = true;
             else if (span instanceof StrikethroughSpan) strike = true;
+            else if (span instanceof SuperscriptSpan) superscript = true;
+            else if (span instanceof SubscriptSpan) subscript = true;
             else if (span instanceof RelativeSizeSpan) sizeChange = ((RelativeSizeSpan) span).getSizeChange();
         }
         StringBuilder props = new StringBuilder();
@@ -1678,6 +1690,8 @@ public final class MainActivity extends Activity {
         if (italic) props.append("\\i ");
         if (underline) props.append("\\ul ");
         if (strike) props.append("\\strike ");
+        if (superscript) props.append("\\super ");
+        else if (subscript) props.append("\\sub ");
         if (sizeChange != null) props.append("\\fs").append(Math.max(4, Math.min(144, Math.round(24f * sizeChange)))).append(' ');
         return props.toString();
     }
