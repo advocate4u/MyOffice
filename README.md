@@ -34,6 +34,7 @@ An original Android office and learning app focused on free, offline-first use, 
 - Recent type filters (feature F25): filter recent items to All, PDF, Text, CSV or common Office formats while retaining filename search and sorting.
 - PDF zoom (feature F26): increase/decrease local PDF render scale or reset to 100%, with horizontal scrolling for zoomed pages and bounded scale settings.
 - PDF page jump (feature F27): enter a one-based page number and jump directly to that page while retaining the current zoom level.
+- PDF reading position (feature F28): remember the last page viewed for each selected PDF URI locally and reopen that PDF at the saved page.
 - Text import (feature F14): open a supported text file in preview and optionally edit a local copy in Writer, preserving the original source.
 - Find-in-text (feature F15): search a text preview case-insensitively and highlight matching phrases locally.
 - Formula preview (feature F16): calculate read-only SUM, AVERAGE, MIN, MAX and COUNT over simple cell ranges in the CSV grid, without changing stored formula text.
@@ -83,6 +84,7 @@ The uploaded APK has not yet been run through REA/JADX in this environment becau
 - [F25 Recent file-type filters test plan](docs/testing/F25-recent-file-filters-test-plan.md)
 - [F26 PDF zoom test plan](docs/testing/F26-pdf-zoom-test-plan.md)
 - [F27 PDF page jump test plan](docs/testing/F27-pdf-page-jump-test-plan.md)
+- [F28 PDF reading position test plan](docs/testing/F28-pdf-reading-position-test-plan.md)
 - [F14 Text import test plan](docs/testing/F14-text-import-test-plan.md)
 - [F15 Find-in-text test plan](docs/testing/F15-find-in-text-test-plan.md)
 - [F16 Formula preview test plan](docs/testing/F16-formula-preview-test-plan.md)
