@@ -20,8 +20,8 @@ An original Android office and learning app focused on free, offline-first use, 
 - Local file hub: system document picker, recent URI list, bounded text previews, file metadata and open-with chooser.
 - Offline notes (feature F2): create, edit, save and reopen notes in app-private storage; Hindi/English text; unsaved-change confirmation.
 - Basic PDF reader (feature F3): render local PDF pages with Android PdfRenderer and navigate previous/next pages; rendering stays on-device and unsupported/encrypted files show an error.
-- PDF rotated-copy export (feature F60): export a new PDF with the selected 0°/90°/180°/270° viewer rotation baked into every page; rendering runs off the UI thread and leaves the source untouched. This rasterized output may lose searchable/selectable text and is limited to 500 pages.
-- PDF watermark/stamp export (feature F61): add user-supplied text such as DRAFT, COPY or APPROVED to every page of a new flattened PDF copy, while preserving the chosen viewer rotation and leaving the original untouched.
+- PDF rotated-copy export (feature F62): export a new PDF with the selected 0°/90°/180°/270° viewer rotation baked into every page; rendering runs off the UI thread and leaves the source untouched. This rasterized output may lose searchable/selectable text and is limited to 500 pages.
+- PDF watermark/stamp export (feature F63): add user-supplied text such as DRAFT, COPY or APPROVED to every page of a new flattened PDF copy, while preserving the chosen viewer rotation and leaving the original untouched.
 - Writer first milestone (feature F4): create, edit, save and reopen local UTF-8 plain-text documents; share text through Android's chooser; unsaved-change confirmation.
 - Writer rich formatting (feature F57): apply bold, italic, underline, strikethrough, relative font size, red/blue text, yellow highlight, and left/center/right editor alignment. Formatted copies persist as HTML and can be reopened offline; existing TXT files remain supported.
 - Writer rich-format save safety (feature F60): detect formatting spans when saving or leaving Writer, persist formatted content as HTML instead of silently flattening it to plain text, and compare the editor's actual initial text when checking for unsaved changes.
@@ -79,7 +79,7 @@ An original Android office and learning app focused on free, offline-first use, 
 - DOCX export (feature F19): export Writer plain text as a minimal WordprocessingML DOCX package through Android's Save document picker.
 - Arithmetic formula preview (feature F20): preview `=A1+B1`, subtraction, multiplication and division using numeric cell references, alongside the aggregate formulas from F16.
 - No login or network permission is required for these core features.
-- Rich-text formatting, DOCX import/export, formulas, XLSX/PPTX import/export, slide themes/images/animations, camera scanning/OCR, PDF annotation/search and advanced office functionality are not implemented yet.
+- Advanced Word compatibility (preserving DOCX formatting, tables and images), XLSX/PPTX import/export, slide themes/images/animations, camera scanning/OCR, PDF text search/native annotations and other advanced office functionality are still in development.
 
 ## Build and APK workflow
 
@@ -147,8 +147,8 @@ The uploaded APK has not yet been run through REA/JADX in this environment becau
 - [F52 Back navigation test plan](docs/testing/F52-back-navigation-test-plan.md)
 - [F58 Batch share recent files test plan](docs/testing/F58-batch-share-recent-files-test-plan.md)
 - [F59 Select visible recent files test plan](docs/testing/F59-select-visible-recent-files-test-plan.md)
-- [F60 PDF rotated-copy export test plan](docs/testing/F60-pdf-rotated-copy-export-test-plan.md)
-- [F61 PDF watermark/stamp test plan](docs/testing/F61-pdf-watermark-stamp-test-plan.md)
+- [F62 PDF rotated-copy export test plan](docs/testing/F62-pdf-rotated-copy-export-test-plan.md)
+- [F63 PDF watermark/stamp test plan](docs/testing/F63-pdf-watermark-stamp-test-plan.md)
 - [F14 Text import test plan](docs/testing/F14-text-import-test-plan.md)
 - [F15 Find-in-text test plan](docs/testing/F15-find-in-text-test-plan.md)
 - [F16 Formula preview test plan](docs/testing/F16-formula-preview-test-plan.md)
