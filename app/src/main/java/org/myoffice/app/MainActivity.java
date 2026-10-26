@@ -2054,6 +2054,24 @@ public final class MainActivity extends Activity {
         return file.getName();
     }
 
+    private void duplicatePresentation(File source) {
+        try {
+            ArrayList<Slide> slides = readDeck(source);
+            if (slides.isEmpty()) slides.add(new Slide("", ""));
+            String title = slides.get(0).title.trim();
+            slides.get(0).title = (title.isEmpty() ? "Untitled presentation" : title) + " (copy)";
+            File target = new File(presentationDirectory(), "presentation_" + System.currentTimeMillis() + ".deck");
+            try (OutputStreamWriter writer = new OutputStreamWriter(new FileOutputStream(target), "UTF-8")) {
+                writer.write(serializeDeck(slides));
+                writer.flush();
+            }
+            Toast.makeText(this, "Slide deck duplicated.", Toast.LENGTH_SHORT).show();
+            showPresentationList();
+        } catch (Exception e) {
+            Toast.makeText(this, "Could not duplicate this slide deck.", Toast.LENGTH_LONG).show();
+        }
+    }
+
     private void renderPresentationResults(LinearLayout results, String queryText) {
         results.removeAllViews();
         File[] files = deckFiles();
@@ -2091,6 +2109,7 @@ public final class MainActivity extends Activity {
             if (preview.length() > 100) preview = preview.substring(0, 100) + "…";
             card.addView(label(preview.isEmpty() ? count + " slide(s)" : preview, 13, false));
             card.addView(label(count + " slide(s) · Modified " + DateFormat.getDateTimeInstance().format(new Date(file.lastModified())), 12, false));
+            card.addView(action("Duplicate deck", v -> duplicatePresentation(selected)));
             card.addView(action("Delete deck", v -> confirmDeleteFile(selected, "slide deck", () -> showPresentationList())));
             card.setOnClickListener(v -> {
                 try {
