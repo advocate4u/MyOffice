@@ -87,6 +87,8 @@ public final class MainActivity extends Activity {
     private File currentCsvFile;
     private String sheetOriginalSnapshot = "";
     private boolean spreadsheetEditorOpen = false;
+    private boolean presentationEditorOpen = false;
+    private boolean slideshowOpen = false;
     private static final class Slide {
         String title;
         String body;
@@ -1615,6 +1617,14 @@ public final class MainActivity extends Activity {
             requestSpreadsheetExit();
             return;
         }
+        if (presentationEditorOpen) {
+            requestPresentationExit();
+            return;
+        }
+        if (slideshowOpen) {
+            showPresentationEditor(false);
+            return;
+        }
         super.onBackPressed();
     }
 
@@ -1992,6 +2002,8 @@ public final class MainActivity extends Activity {
     }
 
     private void showPresentationList() {
+        presentationEditorOpen = false;
+        slideshowOpen = false;
         LinearLayout content = column();
         TextView back = label("‹  Back to MyOffice", 16, true);
         back.setOnClickListener(v -> showHome());
@@ -2094,6 +2106,21 @@ public final class MainActivity extends Activity {
         if (shown == 0) results.addView(label(query.isEmpty() ? "No slide decks yet." : "No slide decks match your search.", 15, false));
     }
 
+    private void requestPresentationExit() {
+        syncDeckEditor();
+        if (serializeDeck(deckSlides).equals(deckOriginalSnapshot)) {
+            showPresentationList();
+        } else {
+            new AlertDialog.Builder(this)
+                    .setTitle("Unsaved changes")
+                    .setMessage("Save this slide deck before leaving?")
+                    .setNegativeButton("Keep editing", (dialog, which) -> dialog.dismiss())
+                    .setNeutralButton("Discard", (dialog, which) -> showPresentationList())
+                    .setPositiveButton("Save", (dialog, which) -> savePresentation())
+                    .show();
+        }
+    }
+
     private void syncDeckEditor() {
         if (deckSlides.isEmpty()) deckSlides.add(new Slide("", ""));
         if (deckTitleInput != null && deckBodyInput != null) {
@@ -2117,6 +2144,8 @@ public final class MainActivity extends Activity {
     }
 
     private void showPresentationEditor(boolean resetOriginal) {
+        presentationEditorOpen = true;
+        slideshowOpen = false;
         if (deckSlides.isEmpty()) deckSlides.add(new Slide("", ""));
         deckIndex = Math.max(0, Math.min(deckIndex, deckSlides.size() - 1));
         Slide slide = deckSlides.get(deckIndex);
@@ -2181,20 +2210,7 @@ public final class MainActivity extends Activity {
             syncDeckEditor();
             deckOriginalSnapshot = serializeDeck(deckSlides);
         }
-        back.setOnClickListener(v -> {
-            syncDeckEditor();
-            if (serializeDeck(deckSlides).equals(deckOriginalSnapshot)) {
-                showPresentationList();
-            } else {
-                new AlertDialog.Builder(this)
-                        .setTitle("Unsaved changes")
-                        .setMessage("Save this slide deck before leaving?")
-                        .setNegativeButton("Keep editing", (dialog, which) -> dialog.dismiss())
-                        .setNeutralButton("Discard", (dialog, which) -> showPresentationList())
-                        .setPositiveButton("Save", (dialog, which) -> savePresentation())
-                        .show();
-            }
-        });
+        back.setOnClickListener(v -> requestPresentationExit());
         ScrollView scroll = new ScrollView(this);
         scroll.addView(content);
         setContentView(scroll);
@@ -2217,6 +2233,8 @@ public final class MainActivity extends Activity {
 
 
     private void showSlideshow() {
+        presentationEditorOpen = false;
+        slideshowOpen = true;
         if (deckSlides.isEmpty()) deckSlides.add(new Slide("", ""));
         deckIndex = Math.max(0, Math.min(deckIndex, deckSlides.size() - 1));
         Slide slide = deckSlides.get(deckIndex);
