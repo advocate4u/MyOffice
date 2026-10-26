@@ -91,7 +91,8 @@ An original Android office and learning app focused on free, offline-first use, 
 - RTF import/export (feature F74): import basic text, paragraph breaks, tabs, common symbols and Unicode escapes from RTF into Writer; export Writer text as a valid basic RTF document.
 - RTF character formatting import (feature F75): preserve common bold, italic, underline, strikethrough and font-size controls from RTF as Writer spans. Color tables, paragraph styles, images and tables remain unsupported.
 - RTF formatting export (feature F76): write supported Writer bold/italic/underline/strikethrough and relative/absolute font-size spans into RTF character groups; color tables and full RTF fidelity are not yet supported.
-- RTF paragraph alignment export (feature F79): write Writer left, center and right paragraph alignment to RTF paragraph controls (`\\ql`, `\\qc`, `\\qr`). Justified alignment, RTF alignment import and full RTF fidelity remain unsupported.
+- RTF paragraph alignment export (feature F79): write Writer left, center and right paragraph alignment to RTF paragraph controls (`\\ql`, `\\qc`, `\\qr`). Justified alignment remains unsupported.
+- RTF paragraph alignment import (feature F80): import common left, center and right RTF paragraph controls into Writer alignment spans, including paragraph boundaries. Justified alignment and advanced paragraph layout remain unsupported.
 - DOCX export (feature F19): export Writer plain text as a minimal WordprocessingML DOCX package through Android's Save document picker.
 - DOCX formatted export (feature F64): export Writer rich-text runs with bold, italic, underline, strikethrough, text color, highlight and relative font size, plus the current left/center/right paragraph alignment. This is a focused compatibility subset, not full Word fidelity.
 - Arithmetic formula preview (feature F20): preview `=A1+B1`, subtraction, multiplication and division using numeric cell references, alongside the aggregate formulas from F16.
@@ -179,6 +180,7 @@ The uploaded APK has not yet been run through REA/JADX in this environment becau
 - [F75 RTF formatting import test plan](docs/testing/F75-rtf-formatting-import-test-plan.md)
 - [F78 PDF pages PNG ZIP export test plan](docs/testing/F78-pdf-pages-png-zip-test-plan.md)
 - [F79 RTF paragraph alignment export test plan](docs/testing/F79-rtf-paragraph-alignment-export-test-plan.md)
+- [F80 RTF paragraph alignment import test plan](docs/testing/F80-rtf-paragraph-alignment-import-test-plan.md)
 - [F77 PDF page PNG export test plan](docs/testing/F77-pdf-page-png-export-test-plan.md)
 - [F76 RTF formatting export test plan](docs/testing/F76-rtf-formatting-export-test-plan.md)
 - [F14 Text import test plan](docs/testing/F14-text-import-test-plan.md)
