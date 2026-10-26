@@ -138,6 +138,25 @@ public final class MainActivity extends Activity {
         String body;
         Slide(String title, String body) { this.title = title; this.body = body; }
     }
+    private static final class RtfStyleState {
+        boolean bold;
+        boolean italic;
+        boolean underline;
+        boolean strike;
+        float sizeRatio = 1.0f;
+        RtfStyleState copy() {
+            RtfStyleState copy = new RtfStyleState();
+            copy.bold = bold;
+            copy.italic = italic;
+            copy.underline = underline;
+            copy.strike = strike;
+            copy.sizeRatio = sizeRatio;
+            return copy;
+        }
+        void reset() {
+            bold = false; italic = false; underline = false; strike = false; sizeRatio = 1.0f;
+        }
+    }
     private ArrayList<Slide> deckSlides = new ArrayList<>();
     private int deckIndex = 0;
     private File currentDeckFile;
@@ -1007,9 +1026,9 @@ public final class MainActivity extends Activity {
         }
         if (lower.endsWith(".rtf") || mime.equals("application/rtf") || mime.equals("text/rtf")) {
             try {
-                String text = readRtfText(uri);
-                Toast.makeText(this, "RTF text imported into Writer as a copy. Original formatting is not preserved.", Toast.LENGTH_LONG).show();
-                showWriterEditor(null, text);
+                Spanned imported = readRtfRichText(uri);
+                Toast.makeText(this, "RTF text and basic bold/italic/underline/size formatting imported as a copy. Advanced formatting is not preserved.", Toast.LENGTH_LONG).show();
+                showWriterEditor(null, imported);
                 return;
             } catch (Exception e) {
                 Toast.makeText(this, "Could not import text from this RTF file.", Toast.LENGTH_LONG).show();
@@ -1328,6 +1347,22 @@ public final class MainActivity extends Activity {
     }
 
     private String readRtfText(Uri uri) throws Exception {
+        return readRtfRichText(uri).toString();
+    }
+
+    private void appendRtfText(SpannableStringBuilder output, String value, RtfStyleState style) {
+        if (value == null || value.isEmpty()) return;
+        int start = output.length();
+        output.append(value);
+        int end = output.length();
+        if (style.bold) output.setSpan(new StyleSpan(Typeface.BOLD), start, end, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+        if (style.italic) output.setSpan(new StyleSpan(Typeface.ITALIC), start, end, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+        if (style.underline) output.setSpan(new UnderlineSpan(), start, end, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+        if (style.strike) output.setSpan(new StrikethroughSpan(), start, end, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+        if (Math.abs(style.sizeRatio - 1.0f) > 0.01f) output.setSpan(new RelativeSizeSpan(style.sizeRatio), start, end, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+    }
+
+    private SpannableStringBuilder readRtfRichText(Uri uri) throws Exception {
         if (sizeOf(uri) > 10L * 1024L * 1024L) throw new IllegalArgumentException("RTF exceeds the 10 MiB import limit");
         byte[] bytes;
         try (InputStream in = getContentResolver().openInputStream(uri);
@@ -1342,8 +1377,10 @@ public final class MainActivity extends Activity {
             bytes = out.toByteArray();
         }
         String input = new String(bytes, "ISO-8859-1");
-        StringBuilder output = new StringBuilder();
+        SpannableStringBuilder output = new SpannableStringBuilder();
         ArrayList<Boolean> skipStack = new ArrayList<>();
+        ArrayList<RtfStyleState> styleStack = new ArrayList<>();
+        RtfStyleState style = new RtfStyleState();
         boolean skipGroup = false;
         int unicodeFallback = 1;
         int skipFallback = 0;
@@ -1351,6 +1388,7 @@ public final class MainActivity extends Activity {
             char ch = input.charAt(i);
             if (ch == '{') {
                 skipStack.add(skipGroup);
+                styleStack.add(style.copy());
                 int probe = i + 1;
                 if (probe < input.length() && input.charAt(probe) == '\\') {
                     probe++;
@@ -1371,9 +1409,8 @@ public final class MainActivity extends Activity {
                 continue;
             }
             if (ch == '}') {
-                if (!skipStack.isEmpty()) {
-                    skipGroup = skipStack.remove(skipStack.size() - 1);
-                }
+                if (!skipStack.isEmpty()) skipGroup = skipStack.remove(skipStack.size() - 1);
+                if (!styleStack.isEmpty()) style = styleStack.remove(styleStack.size() - 1);
                 i++;
                 continue;
             }
@@ -1386,7 +1423,7 @@ public final class MainActivity extends Activity {
                 continue;
             }
             if (ch != '\\') {
-                if (ch != '\r' && ch != '\n') output.append(ch);
+                if (ch != '\r' && ch != '\n') appendRtfText(output, String.valueOf(ch), style);
                 i++;
                 continue;
             }
@@ -1394,13 +1431,13 @@ public final class MainActivity extends Activity {
             if (i >= input.length()) break;
             char control = input.charAt(i);
             if (!Character.isLetter(control)) {
-                if (control == '\\' || control == '{' || control == '}') output.append(control);
-                else if (control == '~') output.append('\u00A0');
-                else if (control == '_') output.append('\u2011');
+                if (control == '\\' || control == '{' || control == '}') appendRtfText(output, String.valueOf(control), style);
+                else if (control == '~') appendRtfText(output, "\u00A0", style);
+                else if (control == '_') appendRtfText(output, "\u2011", style);
                 else if (control == '-') { /* optional hyphen: omit */ }
                 else if (control == '\'') {
                     if (i + 2 < input.length()) {
-                        try { output.append((char) Integer.parseInt(input.substring(i + 1, i + 3), 16)); }
+                        try { appendRtfText(output, String.valueOf((char) Integer.parseInt(input.substring(i + 1, i + 3), 16)), style); }
                         catch (NumberFormatException ignored) { }
                         i += 2;
                     }
@@ -1421,23 +1458,32 @@ public final class MainActivity extends Activity {
                 catch (NumberFormatException ignored) { }
             }
             if (i < input.length() && input.charAt(i) == ' ') i++;
-            if ("par".equals(word) || "line".equals(word)) output.append('\n');
-            else if ("tab".equals(word)) output.append('\t');
-            else if ("emdash".equals(word)) output.append('\u2014');
-            else if ("endash".equals(word)) output.append('\u2013');
-            else if ("bullet".equals(word)) output.append('\u2022');
-            else if ("lquote".equals(word)) output.append('\u2018');
-            else if ("rquote".equals(word)) output.append('\u2019');
-            else if ("ldblquote".equals(word)) output.append('\u201C');
-            else if ("rdblquote".equals(word)) output.append('\u201D');
+            if ("par".equals(word) || "line".equals(word)) appendRtfText(output, "\n", style);
+            else if ("tab".equals(word)) appendRtfText(output, "\t", style);
+            else if ("emdash".equals(word)) appendRtfText(output, "\u2014", style);
+            else if ("endash".equals(word)) appendRtfText(output, "\u2013", style);
+            else if ("bullet".equals(word)) appendRtfText(output, "\u2022", style);
+            else if ("lquote".equals(word)) appendRtfText(output, "\u2018", style);
+            else if ("rquote".equals(word)) appendRtfText(output, "\u2019", style);
+            else if ("ldblquote".equals(word)) appendRtfText(output, "\u201C", style);
+            else if ("rdblquote".equals(word)) appendRtfText(output, "\u201D", style);
+            else if ("b".equals(word)) style.bold = parameter == null || parameter != 0;
+            else if ("i".equals(word)) style.italic = parameter == null || parameter != 0;
+            else if ("ul".equals(word) || "uld".equals(word) || "ulw".equals(word)) style.underline = parameter == null || parameter != 0;
+            else if ("ulnone".equals(word)) style.underline = false;
+            else if ("strike".equals(word) || "striked".equals(word)) style.strike = parameter == null || parameter != 0;
+            else if ("fs".equals(word) && parameter != null) {
+                float ratio = parameter / 24f;
+                if (ratio > 0.2f && ratio < 6f) style.sizeRatio = ratio;
+            } else if ("plain".equals(word)) style.reset();
             else if ("uc".equals(word) && parameter != null) unicodeFallback = Math.max(0, Math.min(8, parameter));
             else if ("u".equals(word) && parameter != null) {
                 int code = parameter < 0 ? parameter + 65536 : parameter;
-                output.append((char) code);
+                appendRtfText(output, String.valueOf((char) code), style);
                 skipFallback = unicodeFallback;
             }
         }
-        return output.toString().replaceAll("\\n{3,}", "\\n\\n").trim();
+        return output;
     }
 
     private String escapeRtfText(String text) {
