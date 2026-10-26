@@ -584,14 +584,14 @@ public final class MainActivity extends Activity {
         String plain = richText.toString();
         int position = start;
         while (position < end) {
-            if (plain.charAt(position) == '\\t') {
+            if (plain.charAt(position) == '\t') {
                 document.append("<w:r><w:tab/></w:r>");
                 position++;
                 continue;
             }
             String properties = docxRunProperties(richText, position);
             int runStart = position;
-            while (position < end && plain.charAt(position) != '\\t'
+            while (position < end && plain.charAt(position) != '\t'
                     && properties.equals(docxRunProperties(richText, position))) {
                 int codePoint = plain.codePointAt(position);
                 position += Character.charCount(codePoint);
@@ -620,7 +620,7 @@ public final class MainActivity extends Activity {
                 .append("<w:document xmlns:w=\"http://schemas.openxmlformats.org/wordprocessingml/2006/main\"><w:body>");
         int start = 0;
         do {
-            int newline = plain.indexOf('\\n', start);
+            int newline = plain.indexOf('\n', start);
             int end = newline < 0 ? plain.length() : newline;
             document.append("<w:p>");
             int horizontal = alignmentGravity & Gravity.HORIZONTAL_GRAVITY_MASK;
