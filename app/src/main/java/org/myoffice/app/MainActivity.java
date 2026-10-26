@@ -1571,6 +1571,25 @@ public final class MainActivity extends Activity {
         body.getText().setSpan(span, low, high, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
     }
 
+    private boolean hasWriterFormatting(Spanned text) {
+        int end = text.length();
+        return text.getSpans(0, end, StyleSpan.class).length > 0
+                || text.getSpans(0, end, UnderlineSpan.class).length > 0
+                || text.getSpans(0, end, StrikethroughSpan.class).length > 0
+                || text.getSpans(0, end, RelativeSizeSpan.class).length > 0
+                || text.getSpans(0, end, ForegroundColorSpan.class).length > 0
+                || text.getSpans(0, end, BackgroundColorSpan.class).length > 0;
+    }
+
+    private void saveWriterEditorContent(File existing, EditText body) {
+        boolean existingHtml = existing != null && existing.getName().toLowerCase(Locale.ROOT).endsWith(".html");
+        if (existingHtml || hasWriterFormatting(body.getText())) {
+            saveWriterHtml(existingHtml ? existing : null, body);
+        } else {
+            saveWriterFile(existing, body.getText().toString());
+        }
+    }
+
     private void saveWriterHtml(File existing, EditText body) {
         File target = existing != null && existing.getName().toLowerCase(Locale.ROOT).endsWith(".html")
                 ? existing : new File(writerDirectory(), "document_" + System.currentTimeMillis() + ".html");
@@ -1767,6 +1786,7 @@ public final class MainActivity extends Activity {
                 | android.text.InputType.TYPE_TEXT_FLAG_MULTI_LINE
                 | android.text.InputType.TYPE_TEXT_FLAG_CAP_SENTENCES);
         content.addView(body, new LinearLayout.LayoutParams(-1, dp(400)));
+        final String[] initialTextSnapshot = new String[]{body.getText().toString()};
         final String[] initialRichSnapshot = new String[]{Html.toHtml(body.getText(), Html.TO_HTML_PARAGRAPH_LINES_INDIVIDUAL)};
         content.addView(label("Formatting", 16, true));
         HorizontalScrollView formatScroll = new HorizontalScrollView(this);
@@ -1844,13 +1864,7 @@ public final class MainActivity extends Activity {
         }), new LinearLayout.LayoutParams(0, -2, 1));
         content.addView(historyActions);
         content.addView(action("Find & Replace", v -> showFindReplaceDialog(body)));
-        content.addView(action("Save document", v -> {
-            if (existing != null && existing.getName().toLowerCase(Locale.ROOT).endsWith(".html")) {
-                saveWriterHtml(existing, body);
-            } else {
-                saveWriterFile(existing, body.getText().toString());
-            }
-        }));
+        content.addView(action("Save document", v -> saveWriterEditorContent(existing, body)));
         content.addView(action("Save formatted copy (HTML)", v -> saveWriterHtml(null, body)));
         content.addView(action("Share text", v -> {
             Intent share = new Intent(Intent.ACTION_SEND);
@@ -1874,7 +1888,7 @@ public final class MainActivity extends Activity {
                 .setPositiveButton("Discard", (dialog, which) -> showWriterList())
                 .show()));
         writerEditorBackHandler = () -> {
-            boolean unchangedText = body.getText().toString().equals(initialText);
+            boolean unchangedText = body.getText().toString().equals(initialTextSnapshot[0]);
             boolean unchangedRich = Html.toHtml(body.getText(), Html.TO_HTML_PARAGRAPH_LINES_INDIVIDUAL).equals(initialRichSnapshot[0]);
             if (unchangedText && unchangedRich) {
                 showWriterList();
@@ -1884,7 +1898,7 @@ public final class MainActivity extends Activity {
                         .setMessage("Save this document before leaving?")
                         .setNegativeButton("Keep editing", (dialog, which) -> dialog.dismiss())
                         .setNeutralButton("Discard", (dialog, which) -> showWriterList())
-                        .setPositiveButton("Save", (dialog, which) -> saveWriterFile(existing, body.getText().toString()))
+                        .setPositiveButton("Save", (dialog, which) -> saveWriterEditorContent(existing, body))
                         .show();
             }
         };
