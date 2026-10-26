@@ -86,7 +86,8 @@ An original Android office and learning app focused on free, offline-first use, 
 - DOCX text import (feature F18): extract paragraph text from a local DOCX package into a new Writer copy; original is unchanged.
 - DOCX basic-format import (feature F65): import supported bold/italic/underline/strikethrough, text color, highlight and font-size runs into Writer spans. Tables, images, advanced styles and full round-trip fidelity are not preserved.
 - Basic XLSX worksheet import (feature F66): import shared-string, inline-string, numeric, boolean and cached formula-result values from a selected worksheet into a new local editable CSV sheet. The source XLSX remains unchanged; cell formatting and worksheet names from workbook metadata are not yet preserved.
-- XLSX worksheet selection (feature F83): when opening a workbook, list worksheet XML parts in numeric order and let the user choose which one to import, instead of always importing sheet1. Sheet names are currently generic labels and ordering follows sheet filenames, not custom workbook relationship order.
+- XLSX worksheet selection (feature F83): choose which worksheet to import into a new editable CSV sheet.
+- XLSX worksheet names and workbook order (feature F84): read worksheet display names and the presentation order from workbook metadata and relationships when available, falling back to numeric sheet-file order for nonstandard files.
 - Basic XLSX workbook export (feature F68): export the current editable grid as a new single-sheet OOXML workbook with numeric values and inline text, leaving the internal CSV sheet unchanged. Cell styling, formulas and multiple-sheet export are not yet supported.
 - DOCX paragraph alignment (feature F67): import left/center/right/justified paragraph alignment spans and write supported paragraph alignment back during DOCX export.
 - DOCX list import (feature F72): read common bullet and decimal numbering definitions and prefix imported paragraphs with editable bullet/number text. Advanced list restarts, multilevel formats and true Word list semantics are not preserved.
@@ -175,6 +176,7 @@ The uploaded APK has not yet been run through REA/JADX in this environment becau
 - [F67 DOCX paragraph alignment test plan](docs/testing/F67-docx-paragraph-alignment-test-plan.md)
 - [F68 XLSX export test plan](docs/testing/F68-xlsx-export-test-plan.md)
 - [F83 XLSX worksheet selection test plan](docs/testing/F83-xlsx-worksheet-selection-test-plan.md)
+- [F84 XLSX worksheet names and order test plan](docs/testing/F84-xlsx-worksheet-names-order-test-plan.md)
 - [F69 PDF page-range extraction test plan](docs/testing/F69-pdf-page-range-extraction-test-plan.md)
 - [F70 PDF merge test plan](docs/testing/F70-pdf-merge-test-plan.md)
 - [F71 PDF page text annotation test plan](docs/testing/F71-pdf-page-text-annotation-test-plan.md)
