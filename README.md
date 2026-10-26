@@ -53,6 +53,7 @@ An original Android office and learning app focused on free, offline-first use, 
 - Duplicate CSV sheet (feature F44): make a byte-for-byte local copy of a saved CSV sheet so edits can be made independently.
 - Duplicate Writer document (feature F45): create a separate byte-for-byte copy of a saved plain-text Writer file.
 - PDF Save a Copy (feature F46): copy an opened PDF stream to a user-selected destination through Android's Save document picker.
+- Share entire presentation (feature F47): share all text slides in order through Android's system chooser, including slide numbers and titles.
 - Text import (feature F14): open a supported text file in preview and optionally edit a local copy in Writer, preserving the original source.
 - Find-in-text (feature F15): search a text preview case-insensitively and highlight matching phrases locally.
 - Formula preview (feature F16): calculate read-only SUM, AVERAGE, MIN, MAX and COUNT over simple cell ranges in the CSV grid, without changing stored formula text.
@@ -121,6 +122,7 @@ The uploaded APK has not yet been run through REA/JADX in this environment becau
 - [F44 Duplicate CSV sheet test plan](docs/testing/F44-duplicate-csv-sheet-test-plan.md)
 - [F45 Duplicate Writer document test plan](docs/testing/F45-duplicate-writer-test-plan.md)
 - [F46 PDF Save a Copy test plan](docs/testing/F46-pdf-save-copy-test-plan.md)
+- [F47 Share entire presentation test plan](docs/testing/F47-share-entire-presentation-test-plan.md)
 - [F14 Text import test plan](docs/testing/F14-text-import-test-plan.md)
 - [F15 Find-in-text test plan](docs/testing/F15-find-in-text-test-plan.md)
 - [F16 Formula preview test plan](docs/testing/F16-formula-preview-test-plan.md)
