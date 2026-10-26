@@ -35,16 +35,17 @@ jobs:
           APK=app/build/outputs/apk/debug/app-debug.apk
           test -s "$APK"
           "$ANDROID_SDK_ROOT/build-tools/35.0.0/aapt" dump badging "$APK" | grep -Fq "package: name='org.myoffice.app.debug'"
-          cp "$APK" app/build/outputs/apk/debug/MyOffice-0.3.0-DEBUG-TEST-ONLY.apk
+          cp "$APK" app/build/outputs/apk/debug/MyOffice-0.4.0-DEBUG-TEST-ONLY.apk
       - name: Upload debug test APK (NOT an update)
         uses: actions/upload-artifact@v4
         with:
-          name: MyOffice-0.3.0-DEBUG-TEST-ONLY
-          path: app/build/outputs/apk/debug/MyOffice-0.3.0-DEBUG-TEST-ONLY.apk
+          name: MyOffice-0.4.0-DEBUG-TEST-ONLY
+          path: app/build/outputs/apk/debug/MyOffice-0.4.0-DEBUG-TEST-ONLY.apk
           if-no-files-found: error
           retention-days: 7
 
       - name: Prepare persistent MyAdv release keystore
+        id: signing
         env:
           MYADV_KEYSTORE_BASE64: ${{ secrets.MYADV_KEYSTORE_BASE64 }}
           MYADV_STORE_PASSWORD: ${{ secrets.MYADV_STORE_PASSWORD }}
@@ -54,14 +55,18 @@ jobs:
         run: |
           set -euo pipefail
           if [[ -z "$MYADV_KEYSTORE_BASE64" || -z "$MYADV_STORE_PASSWORD" || -z "$MYADV_KEY_ALIAS" || -z "$MYADV_KEY_PASSWORD" ]]; then
-            echo "::error::Release APK not built: persistent MYADV_* signing secrets are missing. Do not use the debug test APK to update the installed production app."
-            exit 1
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+            echo "### Production update APK not built" >> "$GITHUB_STEP_SUMMARY"
+            echo "Persistent MYADV_* signing secrets are missing. The debug APK is for testing only and cannot update the production app." >> "$GITHUB_STEP_SUMMARY"
+            exit 0
           fi
           printf '%s' "$MYADV_KEYSTORE_BASE64" | base64 --decode > "$GITHUB_WORKSPACE/myadv-release.jks"
           test -s "$GITHUB_WORKSPACE/myadv-release.jks"
           keytool -list -keystore "$GITHUB_WORKSPACE/myadv-release.jks" -storepass "$MYADV_STORE_PASSWORD" -alias "$MYADV_KEY_ALIAS" >/dev/null
+          echo "ready=true" >> "$GITHUB_OUTPUT"
 
       - name: Build MyAdv-signed release APK
+        if: steps.signing.outputs.ready == 'true'
         env:
           MYADV_KEYSTORE_FILE: ${{ github.workspace }}/myadv-release.jks
           MYADV_STORE_PASSWORD: ${{ secrets.MYADV_STORE_PASSWORD }}
@@ -70,6 +75,7 @@ jobs:
         run: gradle --no-daemon :app:assembleRelease
 
       - name: Verify release signature, package ID, version and alignment
+        if: steps.signing.outputs.ready == 'true'
         shell: bash
         run: |
           set -euo pipefail
@@ -78,16 +84,16 @@ jobs:
           BUILD_TOOLS="$ANDROID_SDK_ROOT/build-tools/35.0.0"
           "$BUILD_TOOLS/apksigner" verify --verbose --print-certs "$APK"
           BADGING="$("$BUILD_TOOLS/aapt" dump badging "$APK")"
-          echo "$BADGING" | grep -Fq "package: name='org.myoffice.app' versionCode='3' versionName='0.3.0'" || {
+          echo "$BADGING" | grep -Fq "package: name='org.myoffice.app' versionCode='4' versionName='0.4.0'" || {
             echo "Unexpected package ID or version; refusing to publish."
             exit 1
           }
           "$BUILD_TOOLS/zipalign" -c -v -P 16 4 "$APK"
-          cp "$APK" app/build/outputs/apk/release/MyOffice-0.3.0-MYADV-SIGNED-UPDATE.apk
-          sha256sum app/build/outputs/apk/release/MyOffice-0.3.0-MYADV-SIGNED-UPDATE.apk > app/build/outputs/apk/release/MyOffice-0.3.0-SHA256SUMS.txt
+          cp "$APK" app/build/outputs/apk/release/MyOffice-0.4.0-MYADV-SIGNED-UPDATE.apk
+          sha256sum app/build/outputs/apk/release/MyOffice-0.4.0-MYADV-SIGNED-UPDATE.apk > app/build/outputs/apk/release/MyOffice-0.4.0-SHA256SUMS.txt
           {
             echo "### Production update APK"
-            echo "- Install only MyOffice-0.3.0-MYADV-SIGNED-UPDATE.apk to update the production app."
+            echo "- Install only MyOffice-0.4.0-MYADV-SIGNED-UPDATE.apk to update the production app."
             echo "- Package ID verified: org.myoffice.app"
             echo "- Signature verified with the configured persistent MyAdv keystore."
             echo "- If Android still reports a signature conflict, the installed app was signed with a different certificate; the old certificate or original keystore is required to update without uninstalling."
@@ -95,11 +101,12 @@ jobs:
           } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Upload signed production update APK
+        if: steps.signing.outputs.ready == 'true'
         uses: actions/upload-artifact@v4
         with:
-          name: MyOffice-0.3.0-MYADV-SIGNED-UPDATE
+          name: MyOffice-0.4.0-MYADV-SIGNED-UPDATE
           path: |
-            app/build/outputs/apk/release/MyOffice-0.3.0-MYADV-SIGNED-UPDATE.apk
-            app/build/outputs/apk/release/MyOffice-0.3.0-SHA256SUMS.txt
+            app/build/outputs/apk/release/MyOffice-0.4.0-MYADV-SIGNED-UPDATE.apk
+            app/build/outputs/apk/release/MyOffice-0.4.0-SHA256SUMS.txt
           if-no-files-found: error
           retention-days: 14
