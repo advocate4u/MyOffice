@@ -16,8 +16,9 @@ An original Android office and learning app focused on free, offline-first use, 
 - Android app module: `app/`, Java 17, minSdk 26.
 - Local file hub: system document picker, recent URI list, bounded text previews, file metadata and open-with chooser.
 - Offline notes (feature F2): create, edit, save and reopen notes in app-private storage; Hindi/English text; unsaved-change confirmation.
+- Basic PDF reader (feature F3): render local PDF pages with Android PdfRenderer and navigate previous/next pages; rendering stays on-device and unsupported/encrypted files show an error.
 - No login or network permission is required for these core features.
-- DOCX/XLSX/PPTX editing, native PDF rendering, scanner/OCR, cloud sync and advanced office functionality are not implemented yet.
+- DOCX/XLSX/PPTX editing, PDF annotation/search/conversion, scanner/OCR, cloud sync and advanced office functionality are not implemented yet.
 
 ## Build and APK workflow
 
@@ -32,7 +33,8 @@ Check the latest run before claiming that a feature build succeeded. A successfu
 - [WPS-to-MyOffice feature evidence matrix](docs/investigation/09-wps-to-myoffice-feature-evidence-matrix.md)
 - [F1 local file hub test plan](docs/testing/F1-local-file-hub-test-plan.md)
 - [F2 offline notes test plan](docs/testing/F2-offline-notes-test-plan.md)
+- [F3 PDF reader test plan](docs/testing/F3-pdf-reader-test-plan.md)
 
 ## Current status
 
-F0/F1 file hub prototype and F2 offline notes implementation are in source. F2 has been committed; CI build is triggered by the push. Device acceptance tests remain pending until the APK is installed and tested on Android. Work proceeds one feature at a time, with a build after each feature.
+F0/F1 file hub prototype, F2 offline notes and F3 basic PDF reader are in source. F2 build passed. F3 has been committed; CI build is triggered by the push. Device acceptance tests remain pending until the APK is installed and tested on Android. Work proceeds one feature at a time, with a build after each feature.
