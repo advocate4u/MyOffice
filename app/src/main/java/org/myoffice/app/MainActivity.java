@@ -558,6 +558,7 @@ public final class MainActivity extends Activity {
                 if (preview.length() > 100) preview = preview.substring(0, 100) + "…";
                 card.addView(label(preview.isEmpty() ? "Empty note" : preview, 13, false));
                 card.addView(label("Modified " + DateFormat.getDateTimeInstance().format(new Date(file.lastModified())), 11, false));
+                card.addView(action("Delete note", v -> confirmDeleteFile(selected, "note", () -> showNotes())));
                 card.setOnClickListener(v -> {
                     try {
                         String[] note = readNote(selected);
@@ -798,6 +799,7 @@ public final class MainActivity extends Activity {
                 card.addView(label(firstLine, 17, true));
                 card.addView(label(preview.isEmpty() ? "Empty document" : preview, 13, false));
                 card.addView(label("Modified " + DateFormat.getDateTimeInstance().format(new Date(file.lastModified())), 11, false));
+                card.addView(action("Delete document", v -> confirmDeleteFile(selected, "document", () -> showWriterList())));
                 card.setOnClickListener(v -> {
                     try { showWriterEditor(selected, readWriterFile(selected)); }
                     catch (Exception e) { Toast.makeText(this, "Could not open this document.", Toast.LENGTH_LONG).show(); }
@@ -982,6 +984,7 @@ public final class MainActivity extends Activity {
                 card.addView(label(file.getName(), 17, true));
                 card.addView(label(preview.isEmpty() ? "Empty sheet" : preview, 13, false));
                 card.addView(label("Modified " + DateFormat.getDateTimeInstance().format(new Date(file.lastModified())), 11, false));
+                card.addView(action("Delete sheet", v -> confirmDeleteFile(selected, "sheet", () -> showSpreadsheetList())));
                 card.setOnClickListener(v -> {
                     try { showSpreadsheetEditor(selected, parseCsv(readCsvFile(selected)), true); }
                     catch (Exception e) { Toast.makeText(this, "Could not open this CSV file.", Toast.LENGTH_LONG).show(); }
@@ -1196,6 +1199,7 @@ public final class MainActivity extends Activity {
                 content.addView(card, params);
                 card.addView(label(title, 17, true));
                 card.addView(label(count + " slide(s) · Modified " + DateFormat.getDateTimeInstance().format(new Date(file.lastModified())), 12, false));
+                card.addView(action("Delete deck", v -> confirmDeleteFile(selected, "slide deck", () -> showPresentationList())));
                 card.setOnClickListener(v -> {
                     try {
                         deckSlides = readDeck(selected);
@@ -1313,6 +1317,21 @@ public final class MainActivity extends Activity {
         ScrollView scroll = new ScrollView(this);
         scroll.addView(content);
         setContentView(scroll);
+    }
+
+    private void confirmDeleteFile(File file, String itemLabel, Runnable refresh) {
+        new AlertDialog.Builder(this)
+                .setTitle("Delete " + itemLabel + "?")
+                .setMessage("This permanently removes the local MyOffice copy. It cannot be undone.")
+                .setNegativeButton("Cancel", (dialog, which) -> dialog.dismiss())
+                .setPositiveButton("Delete", (dialog, which) -> {
+                    if (file.delete()) {
+                        Toast.makeText(this, itemLabel + " deleted.", Toast.LENGTH_SHORT).show();
+                        refresh.run();
+                    } else {
+                        Toast.makeText(this, "Could not delete " + itemLabel.toLowerCase(Locale.ROOT) + ".", Toast.LENGTH_LONG).show();
+                    }
+                }).show();
     }
 
     private void renderRecents() {
