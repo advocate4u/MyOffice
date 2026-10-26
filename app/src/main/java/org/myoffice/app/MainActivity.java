@@ -2584,19 +2584,31 @@ public final class MainActivity extends Activity {
                     }).show();
         }));
         content.addView(action("Fill & Sign · Typed signature", v -> {
+            LinearLayout signatureContainer = new LinearLayout(this);
+            signatureContainer.setOrientation(LinearLayout.VERTICAL);
             EditText signerName = new EditText(this);
             signerName.setSingleLine(true);
             signerName.setHint("Type your name as a signature");
+            SharedPreferences signaturePrefs = getSharedPreferences("myoffice_pdf_signature", MODE_PRIVATE);
+            signerName.setText(signaturePrefs.getString("saved_signature", ""));
+            signatureContainer.addView(signerName);
+            CheckBox rememberSignature = new CheckBox(this);
+            rememberSignature.setText("Remember this signature on this device");
+            rememberSignature.setChecked(!signerName.getText().toString().trim().isEmpty());
+            signatureContainer.addView(rememberSignature);
             new AlertDialog.Builder(this)
                     .setTitle("Sign page " + (pageIndex[0] + 1))
                     .setMessage("Adds a typed signature to a new flattened PDF copy. This is not a certificate-based digital signature.")
-                    .setView(signerName)
+                    .setView(signatureContainer)
                     .setNegativeButton("Cancel", (dialog, which) -> dialog.dismiss())
                     .setPositiveButton("Create signed copy", (dialog, which) -> {
                         String signature = signerName.getText().toString().trim();
                         if (signature.isEmpty()) {
                             Toast.makeText(this, "Enter a signer name first.", Toast.LENGTH_SHORT).show();
                             return;
+                        }
+                        if (rememberSignature.isChecked()) {
+                            signaturePrefs.edit().putString("saved_signature", signature).apply();
                         }
                         exportEditedPdfCopy(uri, name, currentPdfRotationDegrees, "SIGNATURE:" + signature,
                                 1, Integer.MAX_VALUE, pageIndex[0]);
