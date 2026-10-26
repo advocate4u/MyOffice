@@ -953,13 +953,31 @@ public final class MainActivity extends Activity {
         content.addView(pdfHorizontal, new LinearLayout.LayoutParams(-1, dp(520)));
         int[] pageIndex = new int[]{0};
         float[] zoomLevel = new float[]{1.0f};
+        EditText pageInput = new EditText(this);
+        pageInput.setSingleLine(true);
+        pageInput.setInputType(android.text.InputType.TYPE_CLASS_NUMBER);
+        pageInput.setHint("Page number");
+        pageInput.setText("1");
+        LinearLayout pageJump = new LinearLayout(this);
+        pageJump.setOrientation(LinearLayout.HORIZONTAL);
+        pageJump.addView(pageInput, new LinearLayout.LayoutParams(0, -2, 1));
+        pageJump.addView(action("Go to page", v -> {
+            try {
+                int requested = Integer.parseInt(pageInput.getText().toString().trim());
+                if (requested < 1) throw new NumberFormatException();
+                renderPdfPage(uri, requested - 1, pageImage, pageLabel, pageInput, previousRef[0], nextRef[0], pageIndex, zoomLevel);
+            } catch (NumberFormatException e) {
+                Toast.makeText(this, "Enter a page number starting at 1.", Toast.LENGTH_SHORT).show();
+            }
+        }), new LinearLayout.LayoutParams(0, -2, 1));
+        content.addView(pageJump);
         TextView zoomLabel = label("Zoom 100%", 12, false);
         LinearLayout zoomControls = new LinearLayout(this);
         zoomControls.setOrientation(LinearLayout.HORIZONTAL);
         zoomControls.addView(action("−", v -> {
             zoomLevel[0] = Math.max(0.75f, zoomLevel[0] - 0.25f);
             zoomLabel.setText("Zoom " + Math.round(zoomLevel[0] * 100) + "%");
-            renderPdfPage(uri, pageIndex[0], pageImage, pageLabel, previousRef[0], nextRef[0], pageIndex, zoomLevel);
+            renderPdfPage(uri, pageIndex[0], pageImage, pageLabel, pageInput, previousRef[0], nextRef[0], pageIndex, zoomLevel);
         }), new LinearLayout.LayoutParams(0, -2, 1));
         zoomControls.addView(action("100%", v -> {
             zoomLevel[0] = 1.0f;
@@ -1003,13 +1021,13 @@ public final class MainActivity extends Activity {
         ScrollView scroll = new ScrollView(this);
         scroll.addView(content);
         setContentView(scroll);
-        renderPdfPage(uri, 0, pageImage, pageLabel, previous, next, pageIndex, zoomLevel);
+        renderPdfPage(uri, 0, pageImage, pageLabel, pageInput, previous, next, pageIndex, zoomLevel);
     }
 
     private final Button[] previousRef = new Button[1];
     private final Button[] nextRef = new Button[1];
 
-    private void renderPdfPage(Uri uri, int requestedPage, ImageView image, TextView pageLabel,
+    private void renderPdfPage(Uri uri, int requestedPage, ImageView image, TextView pageLabel, EditText pageInput,
                                Button previous, Button next, int[] pageIndex, float[] zoomLevel) {
         try (ParcelFileDescriptor descriptor = getContentResolver().openFileDescriptor(uri, "r")) {
             if (descriptor == null) throw new IllegalStateException("PDF source is unavailable");
@@ -1030,6 +1048,7 @@ public final class MainActivity extends Activity {
                     image.setImageBitmap(bitmap);
                     image.setTag(bitmap);
                     pageIndex[0] = index;
+                    pageInput.setText(String.valueOf(index + 1));
                     pageLabel.setText("Page " + (index + 1) + " of " + pageCount);
                     previous.setEnabled(index > 0);
                     next.setEnabled(index < pageCount - 1);
