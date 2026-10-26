@@ -1719,9 +1719,9 @@ public final class MainActivity extends Activity {
             if (!(span instanceof AlignmentSpan)) continue;
             Layout.Alignment alignment = ((AlignmentSpan) span).getAlignment();
             if (alignment == Layout.Alignment.ALIGN_CENTER) return "\\qc ";
-            if (alignment == Layout.Alignment.ALIGN_OPPOSITE || alignment == Layout.Alignment.ALIGN_RIGHT) return "\\qr ";
+            if (alignment == Layout.Alignment.ALIGN_OPPOSITE) return "\\qr ";
             if (alignment == Layout.Alignment.ALIGN_JUSTIFY) return "\\qj ";
-            if (alignment == Layout.Alignment.ALIGN_NORMAL || alignment == Layout.Alignment.ALIGN_LEFT) return "\\ql ";
+            if (alignment == Layout.Alignment.ALIGN_NORMAL) return "\\ql ";
         }
         return "\\ql ";
     }
