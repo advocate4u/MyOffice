@@ -2616,14 +2616,14 @@ public final class MainActivity extends Activity {
         SharedPreferences favoritePrefs = getSharedPreferences(FAVORITES_PREFS, MODE_PRIVATE);
         String stored = favoritePrefs.getString(FAVORITES_KEY, "");
         if (stored == null || stored.isEmpty()) return;
-        for (String uri : stored.split("\\n")) {
+        for (String uri : stored.split("\n")) {
             if (!uri.isEmpty() && !favoriteUris.contains(uri)) favoriteUris.add(uri);
         }
     }
 
     private void saveFavorites() {
         StringBuilder stored = new StringBuilder();
-        for (String uri : favoriteUris) stored.append(uri).append("\\n");
+        for (String uri : favoriteUris) stored.append(uri).append("\n");
         getSharedPreferences(FAVORITES_PREFS, MODE_PRIVATE).edit()
                 .putString(FAVORITES_KEY, stored.toString()).apply();
     }
