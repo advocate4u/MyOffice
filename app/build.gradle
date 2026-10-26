@@ -1,5 +1,12 @@
 plugins { id 'com.android.application' }
 
+def myAdvKeystorePath = System.getenv('MYADV_KEYSTORE_FILE')
+def myAdvStorePassword = System.getenv('MYADV_STORE_PASSWORD')
+def myAdvKeyAlias = System.getenv('MYADV_KEY_ALIAS')
+def myAdvKeyPassword = System.getenv('MYADV_KEY_PASSWORD')
+def myAdvSigningReady = myAdvKeystorePath && file(myAdvKeystorePath).isFile() &&
+        myAdvStorePassword && myAdvKeyAlias && myAdvKeyPassword
+
 android {
     namespace 'org.myoffice.app'
     compileSdk 35
@@ -10,27 +17,26 @@ android {
         versionCode 2
         versionName '0.2.0'
     }
-    signingConfigs {
-        release {
-            def keyPath = System.getenv('MYADV_KEYSTORE_PATH')
-            if (keyPath != null && !keyPath.isEmpty()) {
-                storeFile file(keyPath)
-                storePassword System.getenv('MYADV_KEYSTORE_PASSWORD')
-                keyAlias System.getenv('MYADV_KEY_ALIAS')
-                keyPassword System.getenv('MYADV_KEY_PASSWORD')
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+    if (myAdvSigningReady) {
+        signingConfigs {
+            myAdv {
+                storeFile file(myAdvKeystorePath)
+                storePassword myAdvStorePassword
+                keyAlias myAdvKeyAlias
+                keyPassword myAdvKeyPassword
             }
         }
     }
     buildTypes {
         release {
-            if (System.getenv('MYADV_KEYSTORE_PATH') != null && !System.getenv('MYADV_KEYSTORE_PATH').isEmpty()) {
-                signingConfig signingConfigs.release
+            if (myAdvSigningReady) {
+                signingConfig signingConfigs.myAdv
             }
             minifyEnabled false
         }
-    }
-    compileOptions {
-        sourceCompatibility JavaVersion.VERSION_17
-        targetCompatibility JavaVersion.VERSION_17
     }
 }
