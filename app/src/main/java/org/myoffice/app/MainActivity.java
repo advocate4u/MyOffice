@@ -920,7 +920,7 @@ public final class MainActivity extends Activity {
                 card.addView(action("Remove favorite", v -> {
                     favoriteUris.remove(value);
                     saveFavorites();
-                    render.run();
+                    render[0].run();
                 }));
             }
             if (shown == 0) {
@@ -931,10 +931,10 @@ public final class MainActivity extends Activity {
         };
         search.addTextChangedListener(new TextWatcher() {
             @Override public void beforeTextChanged(CharSequence s, int start, int count, int after) { }
-            @Override public void onTextChanged(CharSequence s, int start, int before, int count) { render.run(); }
+            @Override public void onTextChanged(CharSequence s, int start, int before, int count) { render[0].run(); }
             @Override public void afterTextChanged(Editable s) { }
         });
-        render.run();
+        render[0].run();
         ScrollView scroll = new ScrollView(this);
         scroll.addView(content);
         setAppContentView(scroll, "favorites");
