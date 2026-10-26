@@ -11,7 +11,7 @@
 8. Confirm the import still supports shared strings, inline strings, numeric values, booleans and cached formula results.
 
 ## Limitations
-- Chooser labels are generic (“Worksheet 1”, etc.) and follow numeric worksheet XML filenames, not workbook display names or custom relationship order.
+- Workbook worksheet names and custom order are supported when standard workbook metadata and relationships are available; nonstandard files fall back to numeric worksheet filenames.
 - Only cell values from the selected sheet are imported. Formatting, formulas as formulas, multiple-sheet editing, and workbook round-trip preservation are not supported.
 
 ## CI/device verification
