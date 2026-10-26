@@ -231,6 +231,19 @@ public final class MainActivity extends Activity {
 
 
 
+    private String safeTextFilename(String value) {
+        StringBuilder safe = new StringBuilder();
+        for (char ch : value.toCharArray()) {
+            if (ch == '/' || ch == '\\\\' || ch == ':' || ch == '*' || ch == '?' || ch == '"' || ch == '<' || ch == '>' || ch == '|') {
+                safe.append('_');
+            } else {
+                safe.append(ch);
+            }
+        }
+        String result = safe.toString().trim();
+        return result.isEmpty() ? "MyOffice_Note" : result;
+    }
+
     private void startTextExport(String suggestedName, String content) {
         pendingTextExport = content;
         Intent intent = new Intent(Intent.ACTION_CREATE_DOCUMENT);
@@ -554,7 +567,7 @@ public final class MainActivity extends Activity {
         content.addView(action("Export as .txt", v -> {
             String noteTitle = title.getText().toString().trim();
             if (noteTitle.isEmpty()) noteTitle = "Untitled note";
-            String filename = noteTitle.replaceAll("[\\\\/:*?\\"<>|]", "_") + ".txt";
+            String filename = safeTextFilename(noteTitle) + ".txt";
             startTextExport(filename, noteTitle + "\\n\\n" + body.getText().toString());
         }));
         content.addView(action("Discard changes", v -> new AlertDialog.Builder(this)
