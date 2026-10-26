@@ -28,6 +28,8 @@ import android.util.Base64;
 import android.widget.ScrollView;
 import android.widget.TextView;
 import android.widget.Toast;
+import android.text.Editable;
+import android.text.TextWatcher;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
@@ -57,6 +59,7 @@ public final class MainActivity extends Activity {
     private static final String NOTE_PREFIX = "MYOFFICE_NOTE_TITLE:";
     private LinearLayout page;
     private LinearLayout recentList;
+    private EditText recentSearchInput;
     private SharedPreferences prefs;
     private final ArrayList<String> recentUris = new ArrayList<>();
     private ArrayList<ArrayList<EditText>> sheetCells = new ArrayList<>();
@@ -131,6 +134,15 @@ public final class MainActivity extends Activity {
         page.addView(gap(12));
         page.addView(label("Recent files", 21, true));
         page.addView(label("Stored on this device. Files themselves are not copied.", 12, false));
+        recentSearchInput = new EditText(this);
+        recentSearchInput.setSingleLine(true);
+        recentSearchInput.setHint("Search recent files by name");
+        recentSearchInput.addTextChangedListener(new TextWatcher() {
+            @Override public void beforeTextChanged(CharSequence s, int start, int count, int after) { }
+            @Override public void onTextChanged(CharSequence s, int start, int before, int count) { renderRecents(); }
+            @Override public void afterTextChanged(Editable s) { }
+        });
+        page.addView(recentSearchInput);
         recentList = new LinearLayout(this);
         recentList.setOrientation(LinearLayout.VERTICAL);
         page.addView(recentList);
@@ -1341,10 +1353,14 @@ public final class MainActivity extends Activity {
             recentList.addView(label("No recent files yet. Tap Open a file to get started.", 14, false));
             return;
         }
+        String query = recentSearchInput == null ? "" : recentSearchInput.getText().toString().trim().toLowerCase(Locale.ROOT);
+        int shown = 0;
         for (int i = recentUris.size() - 1; i >= 0; i--) {
             final String value = recentUris.get(i);
             Uri uri = Uri.parse(value);
             String name = nameOf(uri);
+            if (!query.isEmpty() && !name.toLowerCase(Locale.ROOT).contains(query)) continue;
+            shown++;
             String mime = getContentResolver().getType(uri);
             if (mime == null) mime = "Unknown file type";
             LinearLayout card = new LinearLayout(this);
@@ -1359,6 +1375,7 @@ public final class MainActivity extends Activity {
             card.addView(label("Tap to open", 11, false));
             card.setOnClickListener(v -> openSelected(Uri.parse(value)));
         }
+        if (shown == 0) recentList.addView(label("No recent files match that name.", 14, false));
     }
 
     private void loadRecents() {
