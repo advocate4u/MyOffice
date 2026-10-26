@@ -14,6 +14,7 @@
 | F65-10 | Save imported content as HTML | Supported imported formatting remains in the HTML copy |
 | F65-11 | Export imported content as DOCX | Supported character styles can round-trip through the focused exporter |
 | F65-12 | Inspect source DOCX | Source file remains unchanged |
+| F65-13 | Import DOCX run with w:rFonts ascii/hAnsi/eastAsia | Available font family is represented by a Writer TypefaceSpan |
 
 ## Limitations
 
