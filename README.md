@@ -60,6 +60,8 @@ An original Android office and learning app focused on free, offline-first use, 
 - PDF page rotation (feature F48): rotate the currently viewed PDF page in 90° steps for easier reading of sideways scans; rotation is a viewer-only transform and does not modify the source PDF.
 - Per-document PDF rotation memory (feature F49): remember each PDF's viewer rotation locally by document URI, so reopening it restores its chosen orientation without changing the file.
 - PDF rotation reset (feature F50): reset the current PDF's viewing orientation to 0° in one tap and persist that choice for that document.
+- MyAdv release signing support (feature F51): optional release builds use the same MYADV_* keystore secrets as MyAdv, then CI verifies the APK signature, package ID and alignment. Debug APK remains available without signing secrets.
+- Back navigation (feature F52): preserve the previous screen, return to it on Android Back, and require a second Back press within two seconds to close from Home.
 - Text import (feature F14): open a supported text file in preview and optionally edit a local copy in Writer, preserving the original source.
 - Find-in-text (feature F15): search a text preview case-insensitively and highlight matching phrases locally.
 - Formula preview (feature F16): calculate read-only SUM, AVERAGE, MIN, MAX and COUNT over simple cell ranges in the CSV grid, without changing stored formula text.
@@ -132,6 +134,8 @@ The uploaded APK has not yet been run through REA/JADX in this environment becau
 - [F48 PDF page rotation test plan](docs/testing/F48-pdf-rotation-test-plan.md)
 - [F49 PDF rotation memory test plan](docs/testing/F49-pdf-rotation-memory-test-plan.md)
 - [F50 PDF rotation reset test plan](docs/testing/F50-pdf-rotation-reset-test-plan.md)
+- [F51 MyAdv signing test plan](docs/testing/F51-myadv-signing-test-plan.md)
+- [F52 Back navigation test plan](docs/testing/F52-back-navigation-test-plan.md)
 - [F14 Text import test plan](docs/testing/F14-text-import-test-plan.md)
 - [F15 Find-in-text test plan](docs/testing/F15-find-in-text-test-plan.md)
 - [F16 Formula preview test plan](docs/testing/F16-formula-preview-test-plan.md)
@@ -142,4 +146,4 @@ The uploaded APK has not yet been run through REA/JADX in this environment becau
 
 ## Current status
 
-F0/F1 file hub prototype, F2 offline notes, F3 basic PDF reader, F4 plain-text Writer, F5 CSV spreadsheet grid, F6 text-only presentations, F7 image-to-PDF conversion, F8 text export and F9 CSV import are in source. F2–F48 features listed above are implemented to varying prototype levels; the latest feature is F48 PDF page rotation. Each feature requires a successful CI build and device acceptance tests before it can be considered verified. Device acceptance tests remain pending until the APK is installed and tested on Android. Work proceeds one feature at a time, with a build after each feature.
+F0/F1 file hub prototype, F2 offline notes, F3 basic PDF reader, F4 plain-text Writer, F5 CSV spreadsheet grid, F6 text-only presentations, F7 image-to-PDF conversion, F8 text export and F9 CSV import are in source. F2–F50 features are implemented to varying prototype levels. F51 adds optional MyAdv-key release signing and F52 documents Back navigation. A signed release APK is created only when the same signing secrets are configured for this repository. Each feature requires successful CI and device acceptance tests before it can be considered verified. Device acceptance tests remain pending until the APK is installed and tested on Android. Work proceeds one feature at a time, with a build after each feature.
