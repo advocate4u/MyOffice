@@ -44,6 +44,7 @@ An original Android office and learning app focused on free, offline-first use, 
 - Notes library search (feature F35): filter saved local notes by title, content preview or filename, case-insensitively.
 - Share note (feature F36): share the current note title and text through Android's system chooser without forcing a save first.
 - Duplicate note (feature F37): create a separate copy of a saved note with a “(copy)” title suffix while preserving the original.
+- Notes sorting (feature F38): switch between modified-date newest-first and title A–Z ordering while retaining the active search.
 - Text import (feature F14): open a supported text file in preview and optionally edit a local copy in Writer, preserving the original source.
 - Find-in-text (feature F15): search a text preview case-insensitively and highlight matching phrases locally.
 - Formula preview (feature F16): calculate read-only SUM, AVERAGE, MIN, MAX and COUNT over simple cell ranges in the CSV grid, without changing stored formula text.
@@ -103,6 +104,7 @@ The uploaded APK has not yet been run through REA/JADX in this environment becau
 - [F35 Notes library search test plan](docs/testing/F35-notes-search-test-plan.md)
 - [F36 Share note test plan](docs/testing/F36-share-note-test-plan.md)
 - [F37 Duplicate note test plan](docs/testing/F37-duplicate-note-test-plan.md)
+- [F38 Notes sorting test plan](docs/testing/F38-notes-sorting-test-plan.md)
 - [F14 Text import test plan](docs/testing/F14-text-import-test-plan.md)
 - [F15 Find-in-text test plan](docs/testing/F15-find-in-text-test-plan.md)
 - [F16 Formula preview test plan](docs/testing/F16-formula-preview-test-plan.md)
