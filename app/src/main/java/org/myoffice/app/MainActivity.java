@@ -45,6 +45,8 @@ public final class MainActivity extends Activity {
     private static final int PICK_FILE = 4101;
     private static final int PICK_IMAGES = 4102;
     private static final int SAVE_PDF = 4103;
+    private static final int SAVE_TEXT = 4104;
+    private String pendingTextExport;
     private File pendingPdfFile;
     private static final String PREFS = "myoffice_recent";
     private static final String KEY = "uris";
@@ -173,6 +175,20 @@ public final class MainActivity extends Activity {
             createPdfFromImagesAsync(images);
             return;
         }
+        if (request == SAVE_TEXT) {
+            String export = pendingTextExport;
+            pendingTextExport = null;
+            if (result != RESULT_OK || data == null || data.getData() == null || export == null) return;
+            try (OutputStreamWriter writer = new OutputStreamWriter(
+                    getContentResolver().openOutputStream(data.getData(), "wt"), "UTF-8")) {
+                writer.write(export);
+                writer.flush();
+                Toast.makeText(this, "Text file exported.", Toast.LENGTH_SHORT).show();
+            } catch (Exception e) {
+                Toast.makeText(this, "Could not export text file.", Toast.LENGTH_LONG).show();
+            }
+            return;
+        }
         if (request == SAVE_PDF) {
             if (result != RESULT_OK || data == null || data.getData() == null) {
                 if (pendingPdfFile != null) pendingPdfFile.delete();
@@ -213,6 +229,20 @@ public final class MainActivity extends Activity {
         openSelected(uri);
     }
 
+
+
+    private void startTextExport(String suggestedName, String content) {
+        pendingTextExport = content;
+        Intent intent = new Intent(Intent.ACTION_CREATE_DOCUMENT);
+        intent.addCategory(Intent.CATEGORY_OPENABLE);
+        intent.setType("text/plain");
+        intent.putExtra(Intent.EXTRA_TITLE, suggestedName.endsWith(".txt") ? suggestedName : suggestedName + ".txt");
+        try { startActivityForResult(intent, SAVE_TEXT); }
+        catch (Exception e) {
+            pendingTextExport = null;
+            Toast.makeText(this, "Could not open the Save text picker.", Toast.LENGTH_LONG).show();
+        }
+    }
 
     private void openImagePicker() {
         Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT);
@@ -521,6 +551,12 @@ public final class MainActivity extends Activity {
                 Toast.makeText(this, "Could not save note. Check available storage.", Toast.LENGTH_LONG).show();
             }
         }));
+        content.addView(action("Export as .txt", v -> {
+            String noteTitle = title.getText().toString().trim();
+            if (noteTitle.isEmpty()) noteTitle = "Untitled note";
+            String filename = noteTitle.replaceAll("[\\\\/:*?\\"<>|]", "_") + ".txt";
+            startTextExport(filename, noteTitle + "\\n\\n" + body.getText().toString());
+        }));
         content.addView(action("Discard changes", v -> new AlertDialog.Builder(this)
                 .setTitle("Discard this edit?")
                 .setMessage("Unsaved changes will be lost.")
@@ -741,6 +777,10 @@ public final class MainActivity extends Activity {
             share.putExtra(Intent.EXTRA_TEXT, body.getText().toString());
             try { startActivity(Intent.createChooser(share, "Share document text")); }
             catch (Exception e) { Toast.makeText(this, "No compatible sharing app was found.", Toast.LENGTH_LONG).show(); }
+        }));
+        content.addView(action("Export as .txt", v -> {
+            String filename = existing == null ? "MyOffice_Document.txt" : existing.getName();
+            startTextExport(filename, body.getText().toString());
         }));
         content.addView(action("Discard changes", v -> new AlertDialog.Builder(this)
                 .setTitle("Discard this edit?")
