@@ -4470,9 +4470,49 @@ public final class MainActivity extends Activity {
         catch (NumberFormatException ignored) { return Integer.MAX_VALUE; }
     }
 
+    private ArrayList<String> readPptxSlideOrder(byte[] presentationXml, byte[] relationshipsXml,
+            HashMap<String, byte[]> slideParts) throws Exception {
+        DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
+        factory.setNamespaceAware(true);
+        factory.setXIncludeAware(false);
+        factory.setExpandEntityReferences(false);
+        factory.setFeature("http://apache.org/xml/features/disallow-doctype-decl", true);
+        factory.setFeature("http://xml.org/sax/features/external-general-entities", false);
+        factory.setFeature("http://xml.org/sax/features/external-parameter-entities", false);
+        String relationshipNamespace = "http://schemas.openxmlformats.org/package/2006/relationships";
+        String officeRelationshipNamespace = "http://schemas.openxmlformats.org/officeDocument/2006/relationships";
+        String presentationNamespace = "http://schemas.openxmlformats.org/presentationml/2006/main";
+        org.w3c.dom.Document relsDoc = factory.newDocumentBuilder().parse(new ByteArrayInputStream(relationshipsXml));
+        HashMap<String, String> targets = new HashMap<>();
+        NodeList relations = relsDoc.getElementsByTagNameNS(relationshipNamespace, "Relationship");
+        for (int i = 0; i < relations.getLength(); i++) {
+            org.w3c.dom.Element relation = (org.w3c.dom.Element) relations.item(i);
+            String id = relation.getAttribute("Id");
+            String target = relation.getAttribute("Target");
+            if (id.isEmpty() || target.isEmpty() || "External".equals(relation.getAttribute("TargetMode"))) continue;
+            String path;
+            if (target.startsWith("/")) path = target.substring(1);
+            else if (target.startsWith("ppt/")) path = target;
+            else path = "ppt/" + target;
+            targets.put(id, path);
+        }
+        org.w3c.dom.Document presentationDoc = factory.newDocumentBuilder().parse(new ByteArrayInputStream(presentationXml));
+        NodeList slideIds = presentationDoc.getElementsByTagNameNS(presentationNamespace, "sldId");
+        ArrayList<String> ordered = new ArrayList<>();
+        for (int i = 0; i < slideIds.getLength(); i++) {
+            org.w3c.dom.Element slideId = (org.w3c.dom.Element) slideIds.item(i);
+            String relId = slideId.getAttributeNS(officeRelationshipNamespace, "id");
+            String target = targets.get(relId);
+            if (target != null && slideParts.containsKey(target) && !ordered.contains(target)) ordered.add(target);
+        }
+        return ordered;
+    }
+
     private ArrayList<Slide> readPptxSlides(Uri uri) throws Exception {
         if (sizeOf(uri) > 25L * 1024L * 1024L) throw new IllegalArgumentException("PPTX exceeds the 25 MiB import limit");
         HashMap<String, byte[]> slideParts = new HashMap<>();
+        byte[] presentationXml = null;
+        byte[] presentationRelationshipsXml = null;
         int totalExpanded = 0;
         try (InputStream source = getContentResolver().openInputStream(uri)) {
             if (source == null) throw new IllegalStateException("PPTX source unavailable");
@@ -4480,8 +4520,11 @@ public final class MainActivity extends Activity {
                 ZipEntry entry;
                 while ((entry = zip.getNextEntry()) != null) {
                     String name = entry.getName();
-                    if (!name.matches("ppt/slides/slide[0-9]+\\.xml")) continue;
-                    if (slideParts.size() >= 100) throw new IllegalArgumentException("PPTX exceeds the 100-slide import limit");
+                    boolean slidePart = name.matches("ppt/slides/slide[0-9]+\\.xml");
+                    boolean presentationPart = "ppt/presentation.xml".equals(name)
+                            || "ppt/_rels/presentation.xml.rels".equals(name);
+                    if (!slidePart && !presentationPart) continue;
+                    if (slidePart && slideParts.size() >= 100) throw new IllegalArgumentException("PPTX exceeds the 100-slide import limit");
                     ByteArrayOutputStream out = new ByteArrayOutputStream();
                     byte[] buffer = new byte[8192];
                     int count;
@@ -4492,13 +4535,25 @@ public final class MainActivity extends Activity {
                         }
                         out.write(buffer, 0, count);
                     }
-                    slideParts.put(name, out.toByteArray());
+                    if (slidePart) slideParts.put(name, out.toByteArray());
+                    else if ("ppt/presentation.xml".equals(name)) presentationXml = out.toByteArray();
+                    else presentationRelationshipsXml = out.toByteArray();
                 }
             }
         }
         if (slideParts.isEmpty()) throw new IllegalArgumentException("No PPTX slide XML was found");
-        ArrayList<String> names = new ArrayList<>(slideParts.keySet());
-        names.sort(Comparator.comparingInt(this::pptxSlideNumber));
+        ArrayList<String> names = new ArrayList<>();
+        if (presentationXml != null && presentationRelationshipsXml != null) {
+            try {
+                names.addAll(readPptxSlideOrder(presentationXml, presentationRelationshipsXml, slideParts));
+            } catch (Exception ignored) {
+                names.clear(); // Fall back to numeric slide filenames for nonstandard packages.
+            }
+        }
+        if (names.isEmpty()) {
+            names.addAll(slideParts.keySet());
+            names.sort(Comparator.comparingInt(this::pptxSlideNumber));
+        }
         DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
         factory.setNamespaceAware(true);
         factory.setXIncludeAware(false);
