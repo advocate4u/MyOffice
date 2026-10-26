@@ -1674,6 +1674,22 @@ public final class MainActivity extends Activity {
         if (view instanceof Button) ((Button) view).setText(mode == 0 ? "Sort: Modified newest" : "Sort: Name A–Z");
     }
 
+    private void duplicateSpreadsheet(File source) {
+        File target = new File(spreadsheetDirectory(), "sheet_" + System.currentTimeMillis() + ".csv");
+        try (InputStream input = new FileInputStream(source);
+             FileOutputStream output = new FileOutputStream(target)) {
+            byte[] buffer = new byte[8192];
+            int read;
+            while ((read = input.read(buffer)) != -1) output.write(buffer, 0, read);
+            output.flush();
+            Toast.makeText(this, "CSV sheet duplicated.", Toast.LENGTH_SHORT).show();
+            showSpreadsheetList();
+        } catch (Exception e) {
+            if (target.exists()) target.delete();
+            Toast.makeText(this, "Could not duplicate this CSV sheet.", Toast.LENGTH_LONG).show();
+        }
+    }
+
     private void renderSpreadsheetResults(LinearLayout results, String queryText) {
         results.removeAllViews();
         File[] files = csvFiles();
@@ -1700,6 +1716,7 @@ public final class MainActivity extends Activity {
             card.addView(label(file.getName(), 17, true));
             card.addView(label(preview.isEmpty() ? "Empty sheet" : preview, 13, false));
             card.addView(label("Modified " + DateFormat.getDateTimeInstance().format(new Date(file.lastModified())), 11, false));
+            card.addView(action("Duplicate sheet", v -> duplicateSpreadsheet(selected)));
             card.addView(action("Delete sheet", v -> confirmDeleteFile(selected, "sheet", () -> showSpreadsheetList())));
             card.setOnClickListener(v -> {
                 try { showSpreadsheetEditor(selected, parseCsv(readCsvFile(selected)), true); }
