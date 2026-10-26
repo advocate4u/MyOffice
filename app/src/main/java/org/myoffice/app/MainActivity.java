@@ -2136,14 +2136,17 @@ public final class MainActivity extends Activity {
                                 if (watermarkText != null && !watermarkText.trim().isEmpty() && (annotationPageIndex < 0 || i == annotationPageIndex)) {
                                     Paint stampPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
                                     boolean typedSignature = watermarkText.startsWith("SIGNATURE:");
+                                    boolean typedNote = watermarkText.startsWith("NOTE:");
                                     boolean checkmark = watermarkText.startsWith("CHECKMARK:");
                                     boolean xmark = watermarkText.startsWith("XMARK:");
                                     String stampText = typedSignature ? watermarkText.substring("SIGNATURE:".length()).trim()
+                                            : typedNote ? watermarkText.substring("NOTE:".length()).trim()
                                             : (checkmark || xmark) ? "" : watermarkText.trim();
-                                    stampPaint.setColor(typedSignature ? 0xFF183A73 : checkmark ? 0xFF188038 : 0x99D32F2F);
-                                    stampPaint.setTextSize(Math.max(typedSignature ? 30f : 26f, bitmap.getWidth() * (typedSignature ? 0.052f : 0.045f)));
-                                    stampPaint.setTextAlign(typedSignature ? Paint.Align.LEFT : Paint.Align.CENTER);
-                                    stampPaint.setTypeface(Typeface.create(Typeface.DEFAULT, typedSignature ? Typeface.ITALIC : Typeface.BOLD));
+                                    stampPaint.setColor(typedSignature ? 0xFF183A73 : (typedNote ? 0xFF202124 : checkmark ? 0xFF188038 : 0x99D32F2F));
+                                    stampPaint.setTextSize(Math.max((typedSignature || typedNote) ? 22f : 26f,
+                                            bitmap.getWidth() * ((typedSignature || typedNote) ? 0.035f : 0.045f)));
+                                    stampPaint.setTextAlign((typedSignature || typedNote) ? Paint.Align.LEFT : Paint.Align.CENTER);
+                                    stampPaint.setTypeface(Typeface.create(Typeface.DEFAULT, typedSignature ? Typeface.ITALIC : (typedNote ? Typeface.NORMAL : Typeface.BOLD)));
                                     if (checkmark || xmark) {
                                         Paint markPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
                                         markPaint.setColor(checkmark ? 0xFF188038 : 0xFFD32F2F);
@@ -2172,6 +2175,42 @@ public final class MainActivity extends Activity {
                                         linePaint.setColor(0xFF183A73);
                                         linePaint.setStrokeWidth(2f);
                                         outputPage.getCanvas().drawLine(left, baseline + 7f, left + stampPaint.measureText(stampText), baseline + 7f, linePaint);
+                                    } else if (typedNote) {
+                                        float left = bitmap.getWidth() * 0.06f;
+                                        float top = bitmap.getHeight() * 0.72f;
+                                        float maxWidth = bitmap.getWidth() * 0.88f;
+                                        float lineHeight = stampPaint.getTextSize() * 1.35f;
+                                        ArrayList<String> lines = new ArrayList<>();
+                                        for (String paragraph : stampText.split("\\n")) {
+                                            StringBuilder line = new StringBuilder();
+                                            for (String word : paragraph.split("\\s+")) {
+                                                String candidate = line.length() == 0 ? word : line + " " + word;
+                                                if (stampPaint.measureText(candidate) > maxWidth && line.length() > 0) {
+                                                    lines.add(line.toString());
+                                                    line.setLength(0);
+                                                    line.append(word);
+                                                } else {
+                                                    if (line.length() > 0) line.append(' ');
+                                                    line.append(word);
+                                                }
+                                            }
+                                            if (line.length() > 0) lines.add(line.toString());
+                                        }
+                                        if (lines.size() > 5) lines = new ArrayList<>(lines.subList(0, 5));
+                                        float boxHeight = lines.size() * lineHeight + 20f;
+                                        Paint backgroundPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+                                        backgroundPaint.setColor(0xE6FFF9C4);
+                                        outputPage.getCanvas().drawRoundRect(left - 8f, top - 8f,
+                                                left + maxWidth, top + boxHeight, 10f, 10f, backgroundPaint);
+                                        float baseline = top + stampPaint.getTextSize();
+                                        for (String line : lines) {
+                                            String fitted = line;
+                                            while (stampPaint.measureText(fitted) > maxWidth && fitted.length() > 1) {
+                                                fitted = fitted.substring(0, fitted.length() - 1);
+                                            }
+                                            outputPage.getCanvas().drawText(fitted, left, baseline, stampPaint);
+                                            baseline += lineHeight;
+                                        }
                                     } else {
                                         outputPage.getCanvas().save();
                                         outputPage.getCanvas().rotate(-30f, bitmap.getWidth() / 2f, bitmap.getHeight() / 2f);
@@ -2371,7 +2410,7 @@ public final class MainActivity extends Activity {
                             Toast.makeText(this, "Enter annotation text first.", Toast.LENGTH_SHORT).show();
                             return;
                         }
-                        exportEditedPdfCopy(uri, name, currentPdfRotationDegrees, annotation,
+                        exportEditedPdfCopy(uri, name, currentPdfRotationDegrees, "NOTE:" + annotation,
                                 1, Integer.MAX_VALUE, pageIndex[0]);
                     }).show();
         }));
