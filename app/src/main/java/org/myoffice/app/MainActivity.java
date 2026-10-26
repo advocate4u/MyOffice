@@ -21,6 +21,7 @@ import android.provider.OpenableColumns;
 import android.view.Gravity;
 import android.view.View;
 import android.widget.Button;
+import android.widget.CheckBox;
 import android.widget.EditText;
 import android.widget.ImageView;
 import android.widget.HorizontalScrollView;
@@ -101,7 +102,11 @@ public final class MainActivity extends Activity {
     private SharedPreferences prefs;
     private final ArrayList<String> recentUris = new ArrayList<>();
     private final ArrayList<String> favoriteUris = new ArrayList<>();
+    private final ArrayList<String> selectedRecentUris = new ArrayList<>();
     private boolean favoritesOnly = false;
+    private boolean recentSelectionMode = false;
+    private Button recentSelectionButton;
+    private Button shareSelectedButton;
     private ArrayList<ArrayList<EditText>> sheetCells = new ArrayList<>();
     private File currentCsvFile;
     private String sheetOriginalSnapshot = "";
@@ -210,6 +215,17 @@ public final class MainActivity extends Activity {
             if (v instanceof Button) ((Button) v).setText(favoritesOnly ? "★ Showing favorites" : "☆ Favorites only");
             renderRecents();
         }));
+        recentSelectionButton = action("Select files", v -> {
+            recentSelectionMode = !recentSelectionMode;
+            if (!recentSelectionMode) selectedRecentUris.clear();
+            recentSelectionButton.setText(recentSelectionMode ? "Cancel selection" : "Select files");
+            updateShareSelectedButton();
+            renderRecents();
+        });
+        page.addView(recentSelectionButton);
+        shareSelectedButton = action("Share selected (0)", v -> shareSelectedRecentFiles());
+        shareSelectedButton.setEnabled(false);
+        page.addView(shareSelectedButton);
         LinearLayout filters = new LinearLayout(this);
         filters.setOrientation(LinearLayout.HORIZONTAL);
         recentFilterButtons.clear();
@@ -2643,6 +2659,20 @@ public final class MainActivity extends Activity {
             LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(-1, -2);
             params.setMargins(0, dp(4), 0, dp(4));
             recentList.addView(card, params);
+            if (recentSelectionMode) {
+                CheckBox check = new CheckBox(this);
+                check.setText("Select this file");
+                check.setChecked(selectedRecentUris.contains(value));
+                check.setOnCheckedChangeListener((buttonView, checked) -> {
+                    if (checked) {
+                        if (!selectedRecentUris.contains(value)) selectedRecentUris.add(value);
+                    } else {
+                        selectedRecentUris.remove(value);
+                    }
+                    updateShareSelectedButton();
+                });
+                card.addView(check);
+            }
             card.addView(label(name, 16, true));
             card.addView(label(mime + "  •  " + sizeText(sizeOf(uri)), 12, false));
             card.addView(label("Tap to open", 11, false));
@@ -2677,6 +2707,42 @@ public final class MainActivity extends Activity {
             card.setOnClickListener(v -> openSelected(Uri.parse(value)));
         }
         if (shown == 0) recentList.addView(label("No recent files match the current search and filter.", 14, false));
+    }
+
+    private void updateShareSelectedButton() {
+        if (shareSelectedButton == null) return;
+        shareSelectedButton.setText("Share selected (" + selectedRecentUris.size() + ")");
+        shareSelectedButton.setEnabled(!selectedRecentUris.isEmpty());
+    }
+
+    private void shareSelectedRecentFiles() {
+        if (selectedRecentUris.isEmpty()) {
+            Toast.makeText(this, "Select at least one file to share.", Toast.LENGTH_SHORT).show();
+            return;
+        }
+        try {
+            ArrayList<Uri> uris = new ArrayList<>();
+            String commonMime = null;
+            boolean mixedMime = false;
+            for (String value : selectedRecentUris) {
+                Uri uri = Uri.parse(value);
+                uris.add(uri);
+                String mime = getContentResolver().getType(uri);
+                if (mime == null || mime.trim().isEmpty()) mime = "*/*";
+                if (commonMime == null) commonMime = mime;
+                else if (!commonMime.equals(mime)) mixedMime = true;
+            }
+            Intent share = new Intent(Intent.ACTION_SEND_MULTIPLE);
+            share.setType(mixedMime ? "*/*" : (commonMime == null ? "*/*" : commonMime));
+            share.putParcelableArrayListExtra(Intent.EXTRA_STREAM, uris);
+            ClipData clipData = ClipData.newUri(getContentResolver(), nameOf(uris.get(0)), uris.get(0));
+            for (int i = 1; i < uris.size(); i++) clipData.addItem(new ClipData.Item(uris.get(i)));
+            share.setClipData(clipData);
+            share.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+            startActivity(Intent.createChooser(share, "Share selected files"));
+        } catch (Exception e) {
+            Toast.makeText(this, "Could not share the selected files. Check that they are still available.", Toast.LENGTH_LONG).show();
+        }
     }
 
     private void loadRecents() {
