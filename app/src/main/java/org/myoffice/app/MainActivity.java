@@ -981,6 +981,7 @@ public final class MainActivity extends Activity {
                 previousRef[0], nextRef[0], pageIndex, zoomLevel)),
                 new LinearLayout.LayoutParams(0, -2, 1));
         content.addView(bookmarkControls);
+        content.addView(action("Page note", v -> showPdfPageNote(uri, pageIndex[0])));
         TextView zoomLabel = label("Zoom 100%", 12, false);
         LinearLayout zoomControls = new LinearLayout(this);
         zoomControls.setOrientation(LinearLayout.HORIZONTAL);
@@ -1036,6 +1037,34 @@ public final class MainActivity extends Activity {
 
     private final Button[] previousRef = new Button[1];
     private final Button[] nextRef = new Button[1];
+
+    private void showPdfPageNote(Uri uri, int pageIndex) {
+        SharedPreferences notes = getSharedPreferences("myoffice_pdf_page_notes", MODE_PRIVATE);
+        String key = uri.toString() + "#" + pageIndex;
+        EditText noteInput = new EditText(this);
+        noteInput.setGravity(Gravity.TOP | Gravity.START);
+        noteInput.setMinLines(5);
+        noteInput.setHint("Write your notes for page " + (pageIndex + 1) + "…");
+        noteInput.setInputType(android.text.InputType.TYPE_CLASS_TEXT
+                | android.text.InputType.TYPE_TEXT_FLAG_MULTI_LINE
+                | android.text.InputType.TYPE_TEXT_FLAG_CAP_SENTENCES);
+        noteInput.setText(notes.getString(key, ""));
+        new AlertDialog.Builder(this)
+                .setTitle("Note · Page " + (pageIndex + 1))
+                .setView(noteInput)
+                .setNegativeButton("Cancel", (dialog, which) -> dialog.dismiss())
+                .setNeutralButton("Delete note", (dialog, which) -> {
+                    notes.edit().remove(key).apply();
+                    Toast.makeText(this, "Page note deleted.", Toast.LENGTH_SHORT).show();
+                })
+                .setPositiveButton("Save note", (dialog, which) -> {
+                    String value = noteInput.getText().toString();
+                    if (value.trim().isEmpty()) notes.edit().remove(key).apply();
+                    else notes.edit().putString(key, value).apply();
+                    Toast.makeText(this, "Page note saved on this device.", Toast.LENGTH_SHORT).show();
+                })
+                .show();
+    }
 
     private ArrayList<Integer> readPdfBookmarks(Uri uri) {
         String stored = getSharedPreferences("myoffice_pdf_bookmarks", MODE_PRIVATE)
