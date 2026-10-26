@@ -32,6 +32,7 @@ An original Android office and learning app focused on free, offline-first use, 
 - Writer rich-format save safety (feature F60): detect formatting spans when saving or leaving Writer, persist formatted content as HTML instead of silently flattening it to plain text, and compare the editor's actual initial text when checking for unsaved changes.
 - Writer bullet and numbered lists (feature F61): prefix selected lines with bullets or sequential numbers, toggle an existing list off, and persist list markers as editable text in TXT/HTML documents.
 - Spreadsheet first milestone (feature F5): editable local CSV grid with add-row/add-column controls, quoted-field parsing/escaping, and local save/reopen.
+- Spreadsheet formula help (feature F85): provide a built-in syntax guide for supported two-cell arithmetic and SUM, AVERAGE, MIN, MAX and COUNT range previews. Results are preview-only; formulas are not recalculated into cells and the editor saves CSV values.
 - Presentation first milestone (feature F6): create/edit/save/reopen local text-only slide decks, navigate slides, add slides, and share current slide text.
 - Basic PPTX text import (feature F81): import up to 100 slides from a local PPTX into a new editable text-only deck, keeping the original unchanged. Themes, images, charts, animations, layout fidelity, and PPTX export are not supported.
 - PPTX custom slide order (feature F82): follow the slide list in `ppt/presentation.xml` and its relationship map when available, with numeric slide-file order as a safe fallback for nonstandard packages.
@@ -127,6 +128,7 @@ The uploaded APK has not yet been run through REA/JADX in this environment becau
 - [F3 PDF reader test plan](docs/testing/F3-pdf-reader-test-plan.md)
 - [F4 Writer test plan](docs/testing/F4-writer-test-plan.md)
 - [F5 Spreadsheet test plan](docs/testing/F5-spreadsheet-test-plan.md)
+- [F85 Spreadsheet formula help test plan](docs/testing/F85-spreadsheet-formula-help-test-plan.md)
 - [F6 Presentation test plan](docs/testing/F6-presentation-test-plan.md)
 - [F7 Image-to-PDF test plan](docs/testing/F7-image-to-pdf-test-plan.md)
 - [F8 Text export test plan](docs/testing/F8-text-export-test-plan.md)
