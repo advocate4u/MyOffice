@@ -28,6 +28,7 @@ An original Android office and learning app focused on free, offline-first use, 
 - Local deletion (feature F12): delete app-private notes, Writer documents, CSV sheets and slide decks after a confirmation dialog.
 - Recent-file search (feature F13): filter the recent file list by filename, case-insensitively, without uploading file data.
 - Remove from recents (feature F21): remove an entry from local recent history without deleting the original document.
+- Recent sorting (feature F22): cycle through newest-first, filename A–Z and largest-first ordering; search and remove-from-recents continue to work with the selected order.
 - Text import (feature F14): open a supported text file in preview and optionally edit a local copy in Writer, preserving the original source.
 - Find-in-text (feature F15): search a text preview case-insensitively and highlight matching phrases locally.
 - Formula preview (feature F16): calculate read-only SUM, AVERAGE, MIN, MAX and COUNT over simple cell ranges in the CSV grid, without changing stored formula text.
@@ -71,6 +72,7 @@ The uploaded APK has not yet been run through REA/JADX in this environment becau
 - [F12 Local deletion test plan](docs/testing/F12-local-deletion-test-plan.md)
 - [F13 Recent-file search test plan](docs/testing/F13-recent-search-test-plan.md)
 - [F21 Remove from recents test plan](docs/testing/F21-remove-from-recents-test-plan.md)
+- [F22 Recent sorting test plan](docs/testing/F22-recent-sorting-test-plan.md)
 - [F14 Text import test plan](docs/testing/F14-text-import-test-plan.md)
 - [F15 Find-in-text test plan](docs/testing/F15-find-in-text-test-plan.md)
 - [F16 Formula preview test plan](docs/testing/F16-formula-preview-test-plan.md)
