@@ -7,6 +7,8 @@ import android.content.ClipData;
 import android.content.SharedPreferences;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
+import android.graphics.Canvas;
+import android.graphics.Path;
 import android.graphics.Paint;
 import android.graphics.Matrix;
 import android.graphics.RectF;
@@ -20,6 +22,7 @@ import android.os.SystemClock;
 import android.os.ParcelFileDescriptor;
 import android.provider.OpenableColumns;
 import android.view.Gravity;
+import android.view.MotionEvent;
 import android.view.View;
 import android.widget.Button;
 import android.widget.CheckBox;
@@ -142,6 +145,47 @@ public final class MainActivity extends Activity {
         String body;
         Slide(String title, String body) { this.title = title; this.body = body; }
     }
+    private final class PdfDrawingPad extends View {
+        private final Path path = new Path();
+        private final Paint ink = new Paint(Paint.ANTI_ALIAS_FLAG);
+        private boolean hasInk = false;
+        PdfDrawingPad() {
+            super(MainActivity.this);
+            ink.setColor(0xFF183A73);
+            ink.setStyle(Paint.Style.STROKE);
+            ink.setStrokeWidth(dp(3));
+            ink.setStrokeCap(Paint.Cap.ROUND);
+            ink.setStrokeJoin(Paint.Join.ROUND);
+            setMinimumHeight(dp(180));
+        }
+        @Override protected void onDraw(Canvas canvas) {
+            super.onDraw(canvas);
+            canvas.drawPath(path, ink);
+        }
+        @Override public boolean onTouchEvent(MotionEvent event) {
+            float x = event.getX(), y = event.getY();
+            switch (event.getAction()) {
+                case MotionEvent.ACTION_DOWN: path.moveTo(x, y); hasInk = true; invalidate(); return true;
+                case MotionEvent.ACTION_MOVE: path.lineTo(x, y); invalidate(); return true;
+                case MotionEvent.ACTION_UP: path.lineTo(x, y); invalidate(); performClick(); return true;
+                default: return true;
+            }
+        }
+        @Override public boolean performClick() { super.performClick(); return true; }
+        void clearDrawing() { path.reset(); hasInk = false; invalidate(); }
+        boolean hasDrawing() { return hasInk; }
+        String toPngBase64() {
+            int width = Math.max(1, getWidth()), height = Math.max(1, getHeight());
+            Bitmap bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888);
+            Canvas canvas = new Canvas(bitmap);
+            canvas.drawPath(path, ink);
+            ByteArrayOutputStream bytes = new ByteArrayOutputStream();
+            bitmap.compress(Bitmap.CompressFormat.PNG, 100, bytes);
+            bitmap.recycle();
+            return Base64.encodeToString(bytes.toByteArray(), Base64.NO_WRAP);
+        }
+    }
+
     private static final class RtfStyleState {
         boolean bold;
         boolean italic;
@@ -2228,17 +2272,29 @@ public final class MainActivity extends Activity {
                                     Paint stampPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
                                     boolean typedSignature = watermarkText.startsWith("SIGNATURE:");
                                     boolean typedNote = watermarkText.startsWith("NOTE:");
+                                    boolean freehandDrawing = watermarkText.startsWith("DRAWING:");
                                     boolean checkmark = watermarkText.startsWith("CHECKMARK:");
                                     boolean xmark = watermarkText.startsWith("XMARK:");
                                     String stampText = typedSignature ? watermarkText.substring("SIGNATURE:".length()).trim()
                                             : typedNote ? watermarkText.substring("NOTE:".length()).trim()
-                                            : (checkmark || xmark) ? "" : watermarkText.trim();
+                                            : (freehandDrawing || checkmark || xmark) ? "" : watermarkText.trim();
                                     stampPaint.setColor(typedSignature ? 0xFF183A73 : (typedNote ? 0xFF202124 : checkmark ? 0xFF188038 : 0x99D32F2F));
                                     stampPaint.setTextSize(Math.max((typedSignature || typedNote) ? 22f : 26f,
                                             bitmap.getWidth() * ((typedSignature || typedNote) ? 0.035f : 0.045f)));
                                     stampPaint.setTextAlign((typedSignature || typedNote) ? Paint.Align.LEFT : Paint.Align.CENTER);
                                     stampPaint.setTypeface(Typeface.create(Typeface.DEFAULT, typedSignature ? Typeface.ITALIC : (typedNote ? Typeface.NORMAL : Typeface.BOLD)));
-                                    if (checkmark || xmark) {
+                                    if (freehandDrawing) {
+                                        try {
+                                            byte[] drawingBytes = Base64.decode(watermarkText.substring("DRAWING:".length()), Base64.DEFAULT);
+                                            Bitmap drawingBitmap = BitmapFactory.decodeByteArray(drawingBytes, 0, drawingBytes.length);
+                                            if (drawingBitmap != null) {
+                                                RectF target = new RectF(bitmap.getWidth() * 0.08f, bitmap.getHeight() * 0.65f,
+                                                        bitmap.getWidth() * 0.92f, bitmap.getHeight() * 0.94f);
+                                                outputPage.getCanvas().drawBitmap(drawingBitmap, null, target, null);
+                                                drawingBitmap.recycle();
+                                            }
+                                        } catch (Exception ignored) { }
+                                    } else if (checkmark || xmark) {
                                         Paint markPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
                                         markPaint.setColor(checkmark ? 0xFF188038 : 0xFFD32F2F);
                                         markPaint.setStyle(Paint.Style.STROKE);
@@ -2503,6 +2559,27 @@ public final class MainActivity extends Activity {
                             return;
                         }
                         exportEditedPdfCopy(uri, name, currentPdfRotationDegrees, "NOTE:" + annotation,
+                                1, Integer.MAX_VALUE, pageIndex[0]);
+                    }).show();
+        }));
+        content.addView(action("Draw / sign by hand", v -> {
+            LinearLayout drawingContainer = column();
+            drawingContainer.setPadding(dp(8), dp(8), dp(8), dp(8));
+            drawingContainer.setBackgroundColor(0xFFFFFFFF);
+            drawingContainer.addView(label("Draw with your finger in the box. The drawing is placed near the bottom of the current page.", 13, false));
+            PdfDrawingPad drawingPad = new PdfDrawingPad();
+            drawingContainer.addView(drawingPad, new LinearLayout.LayoutParams(-1, dp(200)));
+            drawingContainer.addView(action("Clear drawing", clear -> drawingPad.clearDrawing()));
+            new AlertDialog.Builder(this).setTitle("Freehand PDF annotation")
+                    .setView(drawingContainer)
+                    .setNegativeButton("Cancel", (dialog, which) -> dialog.dismiss())
+                    .setPositiveButton("Export annotated copy", (dialog, which) -> {
+                        if (!drawingPad.hasDrawing()) {
+                            Toast.makeText(this, "Draw something first.", Toast.LENGTH_SHORT).show();
+                            return;
+                        }
+                        String encoded = drawingPad.toPngBase64();
+                        exportEditedPdfCopy(uri, name, currentPdfRotationDegrees, "DRAWING:" + encoded,
                                 1, Integer.MAX_VALUE, pageIndex[0]);
                     }).show();
         }));
