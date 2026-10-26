@@ -54,6 +54,22 @@ jobs:
           else
             test -s app/build/outputs/apk/debug/MyOffice-0.2.0-debug.apk
           fi
+      - name: Verify APK signature and package identity
+        shell: bash
+        run: |
+          SDK_ROOT="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-/usr/local/lib/android/sdk}}"
+          if [ -n "$MYADV_KEYSTORE_PATH" ]; then
+            APK_PATH="app/build/outputs/apk/release/MyOffice-0.2.0-MyAdv-signed.apk"
+          else
+            APK_PATH="app/build/outputs/apk/debug/MyOffice-0.2.0-debug.apk"
+          fi
+          APKSIGNER="$(find "$SDK_ROOT/build-tools" -type f -name apksigner | sort -V | tail -n 1)"
+          AAPT="$(find "$SDK_ROOT/build-tools" -type f -name aapt | sort -V | tail -n 1)"
+          test -x "$APKSIGNER"
+          test -x "$AAPT"
+          "$APKSIGNER" verify --verbose --print-certs "$APK_PATH"
+          "$AAPT" dump badging "$APK_PATH" | grep -F "package: name='org.myoffice.app'"
+          sha256sum "$APK_PATH" | tee "$APK_PATH.sha256"
       - name: Verify MyAdv APK signature
         if: ${{ secrets.MYADV_KEYSTORE_BASE64 != '' && secrets.MYADV_KEYSTORE_PASSWORD != '' && secrets.MYADV_KEY_ALIAS != '' && secrets.MYADV_KEY_PASSWORD != '' }}
         run: $ANDROID_HOME/build-tools/$(ls $ANDROID_HOME/build-tools | sort -V | tail -n 1)/apksigner verify --verbose --print-certs app/build/outputs/apk/release/MyOffice-0.2.0-MyAdv-signed.apk
@@ -62,7 +78,9 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: MyOffice-0.2.0-MyAdv-signed-apk
-          path: app/build/outputs/apk/release/MyOffice-0.2.0-MyAdv-signed.apk
+          path: |
+            app/build/outputs/apk/release/MyOffice-0.2.0-MyAdv-signed.apk
+            app/build/outputs/apk/release/MyOffice-0.2.0-MyAdv-signed.apk.sha256
           if-no-files-found: error
           retention-days: 14
       - name: Upload debug APK fallback
@@ -70,6 +88,8 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: MyOffice-0.2.0-debug-apk
-          path: app/build/outputs/apk/debug/MyOffice-0.2.0-debug.apk
+          path: |
+            app/build/outputs/apk/debug/MyOffice-0.2.0-debug.apk
+            app/build/outputs/apk/debug/MyOffice-0.2.0-debug.apk.sha256
           if-no-files-found: error
           retention-days: 14
