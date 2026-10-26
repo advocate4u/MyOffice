@@ -14,7 +14,7 @@ An original Android office and learning app focused on free, offline-first use, 
 ## Current implementation
 
 - Android app module: `app/`, Java 17, minSdk 26.
-- MyAdv release signing: CI uses the persistent keystore provided through GitHub Actions secrets `MYADV_KEYSTORE_BASE64`, `MYADV_KEYSTORE_PASSWORD`, `MYADV_KEY_ALIAS`, and `MYADV_KEY_PASSWORD`. When all four are configured, CI builds a MyAdv-signed release APK; otherwise it builds a debug-signed fallback. The fallback is not the stable release signer and should not be used for upgrades over an APK signed with a different key.
+- MyAdv release signing: CI uses the persistent keystore provided through GitHub Actions secrets `MYADV_KEYSTORE_BASE64`, `MYADV_STORE_PASSWORD`, `MYADV_KEY_ALIAS`, and `MYADV_KEY_PASSWORD`. When all four are configured, CI builds a MyAdv-signed release APK; otherwise it builds a debug-signed fallback. The fallback is not the stable release signer and should not be used for upgrades over an APK signed with a different key.
 - APK verification: CI verifies the APK signature, confirms the package ID remains `org.myoffice.app`, and emits a SHA-256 checksum. Android's package installer independently validates signatures at install/update time.
 - Back navigation: the Android Back button returns through previous screens; from Home, press Back twice within two seconds to close the app. Spreadsheet/presentation editors retain their unsaved-change prompts.
 - Local file hub: system document picker, recent URI list, bounded text previews, file metadata and open-with chooser.
@@ -35,7 +35,7 @@ An original Android office and learning app focused on free, offline-first use, 
 - Recent sorting (feature F22): cycle through newest-first, filename A–Z and largest-first ordering; search and remove-from-recents continue to work with the selected order.
 - Recent-file favorites (feature F53): mark recent documents as favorites, persist favorites locally across app restarts, filter the Home list to favorites, and remove a favorite without modifying the source file.
 - Dedicated favorites screen (feature F54): browse and search saved favorite URIs separately from recent history, reopen a favorite, or remove its star without editing the document.
-- Batch sharing from recents (feature F55): select multiple recent files and hand them to Android's share chooser using URI grants; mixed file types use a generic MIME type.
+- Batch sharing from recents (feature F58): select multiple recent files and hand them to Android's share chooser using URI grants; mixed file types use a generic MIME type.
 - Favorites-first recent sorting (feature F55): sort the Home recent-file list with favorites first, preserving newest-first order within favorites and non-favorites.
 - Share from recent files (feature F56): share a recent document directly through Android's chooser without first opening it; source file is not modified.
 - Home shortcuts (feature F23): group note, Writer, spreadsheet, presentation and image-to-PDF entry points into compact two-column tiles while keeping Open a file prominent.
@@ -142,6 +142,8 @@ The uploaded APK has not yet been run through REA/JADX in this environment becau
 - [F50 PDF rotation reset test plan](docs/testing/F50-pdf-rotation-reset-test-plan.md)
 - [F51 MyAdv signing test plan](docs/testing/F51-myadv-signing-test-plan.md)
 - [F52 Back navigation test plan](docs/testing/F52-back-navigation-test-plan.md)
+- [F58 Batch share recent files test plan](docs/testing/F58-batch-share-recent-files-test-plan.md)
+- [F59 Select visible recent files test plan](docs/testing/F59-select-visible-recent-files-test-plan.md)
 - [F14 Text import test plan](docs/testing/F14-text-import-test-plan.md)
 - [F15 Find-in-text test plan](docs/testing/F15-find-in-text-test-plan.md)
 - [F16 Formula preview test plan](docs/testing/F16-formula-preview-test-plan.md)
