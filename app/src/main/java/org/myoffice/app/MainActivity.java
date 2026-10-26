@@ -1602,7 +1602,7 @@ public final class MainActivity extends Activity {
         if (selectionEnd < 0) selectionEnd = selectionStart;
         int low = Math.min(selectionStart, selectionEnd);
         int high = Math.max(selectionStart, selectionEnd);
-        int lineStart = snapshot.lastIndexOf('\n', Math.max(0, low - 1)) + 1;
+        int lineStart = snapshot.lastIndexOf('\n', Math.max(-1, low - 1)) + 1;
         int lineEnd = snapshot.indexOf('\n', high);
         if (lineEnd < 0) lineEnd = snapshot.length();
         String block = snapshot.substring(lineStart, lineEnd);
@@ -1613,7 +1613,7 @@ public final class MainActivity extends Activity {
             if (line.trim().isEmpty()) continue;
             hasTextLine = true;
             if (numbered) {
-                if (!line.matches("^\\\\d+\\\\.\\\\s+.*$")) allAlreadyFormatted = false;
+                if (!line.matches("^\\d+\\.\\s+.*$")) allAlreadyFormatted = false;
             } else if (!line.startsWith("• ")) {
                 allAlreadyFormatted = false;
             }
@@ -1629,7 +1629,7 @@ public final class MainActivity extends Activity {
                 if (allAlreadyFormatted) {
                     int prefixLength = 0;
                     if (numbered) {
-                        String stripped = line.replaceFirst("^\\\\d+\\\\.\\\\s+", "");
+                        String stripped = line.replaceFirst("^\\d+\\.\\s+", "");
                         prefixLength = line.length() - stripped.length();
                     } else if (line.startsWith("• ")) {
                         prefixLength = 2;
