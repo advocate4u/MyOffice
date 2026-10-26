@@ -5,6 +5,10 @@ import android.app.AlertDialog;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
+import android.graphics.Paint;
+import android.graphics.RectF;
+import android.graphics.pdf.PdfDocument;
 import android.graphics.pdf.PdfRenderer;
 import android.database.Cursor;
 import android.net.Uri;
@@ -35,9 +39,13 @@ import java.util.Date;
 import java.util.Arrays;
 import java.util.Comparator;
 import java.util.Locale;
+import java.util.List;
 
 public final class MainActivity extends Activity {
     private static final int PICK_FILE = 4101;
+    private static final int PICK_IMAGES = 4102;
+    private static final int SAVE_PDF = 4103;
+    private File pendingPdfFile;
     private static final String PREFS = "myoffice_recent";
     private static final String KEY = "uris";
     private static final int MAX_RECENTS = 12;
@@ -113,6 +121,7 @@ public final class MainActivity extends Activity {
         page.addView(action("Writer: text documents", v -> showWriterList()));
         page.addView(action("Spreadsheet: CSV sheets", v -> showSpreadsheetList()));
         page.addView(action("Presentation: slide decks", v -> showPresentationList()));
+        page.addView(action("Images to PDF (offline)", v -> openImagePicker()));
         page.addView(action("Refresh recent files", v -> { loadRecents(); showHome(); }));
         page.addView(gap(12));
         page.addView(label("Recent files", 21, true));
@@ -147,6 +156,49 @@ public final class MainActivity extends Activity {
 
     @Override protected void onActivityResult(int request, int result, Intent data) {
         super.onActivityResult(request, result, data);
+        if (request == PICK_IMAGES) {
+            if (result != RESULT_OK || data == null) return;
+            ArrayList<Uri> images = new ArrayList<>();
+            if (data.getClipData() != null) {
+                for (int i = 0; i < data.getClipData().getItemCount(); i++) {
+                    Uri item = data.getClipData().getItemAt(i).getUri();
+                    if (item != null) images.add(item);
+                }
+            } else if (data.getData() != null) images.add(data.getData());
+            if (images.isEmpty()) return;
+            if (images.size() > 20) {
+                Toast.makeText(this, "Choose up to 20 images at a time.", Toast.LENGTH_LONG).show();
+                return;
+            }
+            createPdfFromImagesAsync(images);
+            return;
+        }
+        if (request == SAVE_PDF) {
+            if (result != RESULT_OK || data == null || data.getData() == null) {
+                if (pendingPdfFile != null) pendingPdfFile.delete();
+                pendingPdfFile = null;
+                return;
+            }
+            Uri destination = data.getData();
+            try {
+                if (pendingPdfFile == null || !pendingPdfFile.isFile()) throw new IllegalStateException("Temporary PDF is missing");
+                try (InputStream in = new FileInputStream(pendingPdfFile);
+                     java.io.OutputStream out = getContentResolver().openOutputStream(destination, "wt")) {
+                    if (out == null) throw new IllegalStateException("Destination cannot be written");
+                    byte[] buffer = new byte[8192];
+                    int count;
+                    while ((count = in.read(buffer)) != -1) out.write(buffer, 0, count);
+                    out.flush();
+                }
+                pendingPdfFile.delete();
+                pendingPdfFile = null;
+                Toast.makeText(this, "PDF saved.", Toast.LENGTH_SHORT).show();
+                openSelected(destination);
+            } catch (Exception e) {
+                Toast.makeText(this, "Could not save PDF. Choose a writable location.", Toast.LENGTH_LONG).show();
+            }
+            return;
+        }
         if (request != PICK_FILE || result != RESULT_OK || data == null || data.getData() == null) return;
         Uri uri = data.getData();
         try {
@@ -159,6 +211,85 @@ public final class MainActivity extends Activity {
         while (recentUris.size() > MAX_RECENTS) recentUris.remove(0);
         saveRecents();
         openSelected(uri);
+    }
+
+
+    private void openImagePicker() {
+        Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT);
+        intent.addCategory(Intent.CATEGORY_OPENABLE);
+        intent.setType("image/*");
+        intent.putExtra(Intent.EXTRA_ALLOW_MULTIPLE, true);
+        intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION);
+        try { startActivityForResult(intent, PICK_IMAGES); }
+        catch (Exception e) { Toast.makeText(this, "Could not open the image picker.", Toast.LENGTH_LONG).show(); }
+    }
+
+    private void createPdfFromImagesAsync(ArrayList<Uri> images) {
+        Toast.makeText(this, "Preparing PDF on this device…", Toast.LENGTH_SHORT).show();
+        new Thread(() -> {
+            File temp = null;
+            try {
+                temp = File.createTempFile("myoffice_images_", ".pdf", getCacheDir());
+                try (PdfDocument document = new PdfDocument()) {
+                    for (int i = 0; i < images.size(); i++) {
+                        Bitmap bitmap = decodeImage(images.get(i));
+                        if (bitmap == null) throw new IllegalArgumentException("An image could not be decoded");
+                        int pageWidth = bitmap.getWidth() > bitmap.getHeight() ? 842 : 595;
+                        int pageHeight = bitmap.getWidth() > bitmap.getHeight() ? 595 : 842;
+                        PdfDocument.PageInfo info = new PdfDocument.PageInfo.Builder(pageWidth, pageHeight, i + 1).create();
+                        PdfDocument.Page page = document.startPage(info);
+                        float scale = Math.min((pageWidth - 48f) / bitmap.getWidth(), (pageHeight - 48f) / bitmap.getHeight());
+                        float drawWidth = bitmap.getWidth() * scale;
+                        float drawHeight = bitmap.getHeight() * scale;
+                        float left = (pageWidth - drawWidth) / 2f;
+                        float top = (pageHeight - drawHeight) / 2f;
+                        Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG | Paint.FILTER_BITMAP_FLAG);
+                        page.getCanvas().drawBitmap(bitmap, null, new RectF(left, top, left + drawWidth, top + drawHeight), paint);
+                        document.finishPage(page);
+                        bitmap.recycle();
+                    }
+                    try (FileOutputStream out = new FileOutputStream(temp)) { document.writeTo(out); }
+                }
+                File ready = temp;
+                runOnUiThread(() -> showSavePdfPicker(ready));
+            } catch (Exception e) {
+                if (temp != null) temp.delete();
+                runOnUiThread(() -> Toast.makeText(this, "Could not convert these images to PDF.", Toast.LENGTH_LONG).show());
+            }
+        }, "myoffice-image-to-pdf").start();
+    }
+
+    private Bitmap decodeImage(Uri uri) throws Exception {
+        BitmapFactory.Options bounds = new BitmapFactory.Options();
+        bounds.inJustDecodeBounds = true;
+        try (InputStream in = getContentResolver().openInputStream(uri)) {
+            if (in == null) throw new IllegalStateException("Image unavailable");
+            BitmapFactory.decodeStream(in, null, bounds);
+        }
+        if (bounds.outWidth <= 0 || bounds.outHeight <= 0) throw new IllegalArgumentException("Invalid image");
+        int sample = 1;
+        while (Math.max(bounds.outWidth / sample, bounds.outHeight / sample) > 1800) sample *= 2;
+        BitmapFactory.Options options = new BitmapFactory.Options();
+        options.inSampleSize = sample;
+        options.inPreferredConfig = Bitmap.Config.RGB_565;
+        try (InputStream in = getContentResolver().openInputStream(uri)) {
+            if (in == null) throw new IllegalStateException("Image unavailable");
+            return BitmapFactory.decodeStream(in, null, options);
+        }
+    }
+
+    private void showSavePdfPicker(File tempPdf) {
+        pendingPdfFile = tempPdf;
+        Intent intent = new Intent(Intent.ACTION_CREATE_DOCUMENT);
+        intent.addCategory(Intent.CATEGORY_OPENABLE);
+        intent.setType("application/pdf");
+        intent.putExtra(Intent.EXTRA_TITLE, "MyOffice_Images.pdf");
+        try { startActivityForResult(intent, SAVE_PDF); }
+        catch (Exception e) {
+            tempPdf.delete();
+            pendingPdfFile = null;
+            Toast.makeText(this, "Could not open the Save PDF picker.", Toast.LENGTH_LONG).show();
+        }
     }
 
     private String nameOf(Uri uri) {
