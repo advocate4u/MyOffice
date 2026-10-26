@@ -30,6 +30,9 @@ import android.widget.TextView;
 import android.widget.Toast;
 import android.text.Editable;
 import android.text.TextWatcher;
+import android.text.SpannableString;
+import android.text.style.BackgroundColorSpan;
+import android.text.style.ForegroundColorSpan;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
@@ -480,11 +483,35 @@ public final class MainActivity extends Activity {
                 showWriterEditor(null, bodyText);
             }
         }));
+        EditText findInput = new EditText(this);
+        findInput.setSingleLine(true);
+        findInput.setHint("Find text in this file");
+        content.addView(findInput);
         TextView body = label(bodyText, 15, false);
         body.setGravity(Gravity.TOP | Gravity.START);
         body.setTextIsSelectable(true);
         body.setPadding(dp(12), dp(12), dp(12), dp(12));
         body.setBackgroundColor(0xFFFFFFFF);
+        content.addView(action("Find in text", v -> {
+            String query = findInput.getText().toString();
+            if (query.trim().isEmpty()) {
+                body.setText(bodyText);
+                Toast.makeText(this, "Enter text to find.", Toast.LENGTH_SHORT).show();
+                return;
+            }
+            SpannableString highlighted = new SpannableString(bodyText);
+            int matches = 0;
+            for (int index = 0; index <= bodyText.length() - query.length(); index++) {
+                if (bodyText.regionMatches(true, index, query, 0, query.length())) {
+                    highlighted.setSpan(new BackgroundColorSpan(0xFFFFE082), index, index + query.length(), android.text.Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
+                    highlighted.setSpan(new ForegroundColorSpan(0xFF202020), index, index + query.length(), android.text.Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
+                    matches++;
+                    index += Math.max(0, query.length() - 1);
+                }
+            }
+            body.setText(highlighted);
+            Toast.makeText(this, matches == 0 ? "No matches found." : matches + " match(es) highlighted.", Toast.LENGTH_SHORT).show();
+        }));
         content.addView(body);
         ScrollView scroll = new ScrollView(this);
         scroll.addView(content);
