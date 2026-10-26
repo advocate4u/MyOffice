@@ -20,3 +20,5 @@ This feature exports a subset of character formatting only. Font colors, highlig
 | F76-07 | Apply Writer superscript/subscript and export RTF | Output contains `\\super`/`\\sub` controls for formatted runs |
 
 | F76-08 | Apply absolute font size (8–48 pt) and export RTF | Output includes bounded `\\fsN` size control matching the selected size approximately |
+
+| F76-09 | Apply black/red/blue/green/purple text and yellow highlight | RTF contains a color table and matching `\\cfN`/`\\highlightN` controls |
