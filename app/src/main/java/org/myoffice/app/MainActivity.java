@@ -1162,7 +1162,7 @@ public final class MainActivity extends Activity {
                 if (!value.startsWith("=")) continue;
                 formulas++;
                 String result = evaluateAggregateFormula(value, data);
-                if (report.length() > 0) report.append("\\n");
+                if (report.length() > 0) report.append("\n");
                 report.append(cellName(r, col)).append("  ").append(value).append("  →  ")
                         .append(result == null ? "Unsupported formula" : result);
             }
