@@ -79,11 +79,13 @@ public final class MainActivity extends Activity {
     private static final int SAVE_DOCX = 4106;
     private static final int SAVE_PDF_COPY = 4107;
     private static final int PICK_PDFS = 4109;
+    private static final int SAVE_RTF = 4110;
     private static final int SAVE_XLSX = 4108;
     private File pendingDocxFile;
     private File pendingXlsxFile;
     private String pendingCsvExport;
     private String pendingTextExport;
+    private String pendingRtfExport;
     private File pendingPdfFile;
     private int currentPdfRotationDegrees = 0;
     private Uri pendingPdfCopySource;
@@ -469,6 +471,20 @@ public final class MainActivity extends Activity {
                 Toast.makeText(this, "CSV exported.", Toast.LENGTH_SHORT).show();
             } catch (Exception e) {
                 Toast.makeText(this, "Could not export CSV.", Toast.LENGTH_LONG).show();
+            }
+            return;
+        }
+        if (request == SAVE_RTF) {
+            String export = pendingRtfExport;
+            pendingRtfExport = null;
+            if (result != RESULT_OK || data == null || data.getData() == null || export == null) return;
+            try (OutputStreamWriter writer = new OutputStreamWriter(
+                    getContentResolver().openOutputStream(data.getData(), "wt"), "UTF-8")) {
+                writer.write(export);
+                writer.flush();
+                Toast.makeText(this, "RTF exported.", Toast.LENGTH_SHORT).show();
+            } catch (Exception e) {
+                Toast.makeText(this, "Could not export RTF.", Toast.LENGTH_LONG).show();
             }
             return;
         }
@@ -989,6 +1005,18 @@ public final class MainActivity extends Activity {
                 return;
             }
         }
+        if (lower.endsWith(".rtf") || mime.equals("application/rtf") || mime.equals("text/rtf")) {
+            try {
+                String text = readRtfText(uri);
+                Toast.makeText(this, "RTF text imported into Writer as a copy. Original formatting is not preserved.", Toast.LENGTH_LONG).show();
+                showWriterEditor(null, text);
+                return;
+            } catch (Exception e) {
+                Toast.makeText(this, "Could not import text from this RTF file.", Toast.LENGTH_LONG).show();
+                showDetails(uri, name, mime);
+                return;
+            }
+        }
         if (lower.endsWith(".docx") || mime.equals("application/vnd.openxmlformats-officedocument.wordprocessingml.document")) {
             try {
                 Spanned imported = readDocxRichText(uri);
@@ -1296,6 +1324,148 @@ public final class MainActivity extends Activity {
         while (child != null) {
             appendWordParagraph(child, out);
             child = child.getNextSibling();
+        }
+    }
+
+    private String readRtfText(Uri uri) throws Exception {
+        if (sizeOf(uri) > 10L * 1024L * 1024L) throw new IllegalArgumentException("RTF exceeds the 10 MiB import limit");
+        byte[] bytes;
+        try (InputStream in = getContentResolver().openInputStream(uri);
+             ByteArrayOutputStream out = new ByteArrayOutputStream()) {
+            if (in == null) throw new IllegalStateException("RTF source unavailable");
+            byte[] buffer = new byte[8192];
+            int count;
+            while ((count = in.read(buffer)) != -1) {
+                if (out.size() + count > 10 * 1024 * 1024) throw new IllegalArgumentException("RTF exceeds the import limit");
+                out.write(buffer, 0, count);
+            }
+            bytes = out.toByteArray();
+        }
+        String input = new String(bytes, "ISO-8859-1");
+        StringBuilder output = new StringBuilder();
+        ArrayList<Boolean> skipStack = new ArrayList<>();
+        boolean skipGroup = false;
+        int unicodeFallback = 1;
+        int skipFallback = 0;
+        for (int i = 0; i < input.length();) {
+            char ch = input.charAt(i);
+            if (ch == '{') {
+                skipStack.add(skipGroup);
+                int probe = i + 1;
+                if (probe < input.length() && input.charAt(probe) == '\\') {
+                    probe++;
+                    if (probe < input.length() && input.charAt(probe) == '*') probe++;
+                    if (probe < input.length() && input.charAt(probe) == '\\') probe++;
+                    int wordStart = probe;
+                    while (probe < input.length() && Character.isLetter(input.charAt(probe))) probe++;
+                    String destination = input.substring(wordStart, probe).toLowerCase(Locale.ROOT);
+                    if (destination.equals("fonttbl") || destination.equals("colortbl") || destination.equals("stylesheet")
+                            || destination.equals("info") || destination.equals("pict") || destination.equals("object")
+                            || destination.equals("header") || destination.equals("footer") || destination.equals("generator")
+                            || destination.equals("listtable") || destination.equals("listoverridetable")
+                            || destination.equals("themedata") || destination.equals("datastore") || destination.equals("xmlnstbl")) {
+                        skipGroup = true;
+                    }
+                }
+                i++;
+                continue;
+            }
+            if (ch == '}') {
+                if (!skipStack.isEmpty()) {
+                    skipGroup = skipStack.remove(skipStack.size() - 1);
+                }
+                i++;
+                continue;
+            }
+            if (skipGroup) { i++; continue; }
+            if (skipFallback > 0) {
+                if (ch == '\\' && i + 1 < input.length() && input.charAt(i + 1) == '\'') i = Math.min(input.length(), i + 4);
+                else if (ch == '\\' && i + 1 < input.length()) i += 2;
+                else i++;
+                skipFallback--;
+                continue;
+            }
+            if (ch != '\\') {
+                if (ch != '\r' && ch != '\n') output.append(ch);
+                i++;
+                continue;
+            }
+            i++;
+            if (i >= input.length()) break;
+            char control = input.charAt(i);
+            if (!Character.isLetter(control)) {
+                if (control == '\\' || control == '{' || control == '}') output.append(control);
+                else if (control == '~') output.append('\u00A0');
+                else if (control == '_') output.append('\u2011');
+                else if (control == '-') { /* optional hyphen: omit */ }
+                else if (control == '\'') {
+                    if (i + 2 < input.length()) {
+                        try { output.append((char) Integer.parseInt(input.substring(i + 1, i + 3), 16)); }
+                        catch (NumberFormatException ignored) { }
+                        i += 2;
+                    }
+                }
+                i++;
+                continue;
+            }
+            int wordStart = i;
+            while (i < input.length() && Character.isLetter(input.charAt(i))) i++;
+            String word = input.substring(wordStart, i);
+            boolean negative = i < input.length() && input.charAt(i) == '-';
+            if (negative) i++;
+            int numberStart = i;
+            while (i < input.length() && Character.isDigit(input.charAt(i))) i++;
+            Integer parameter = null;
+            if (i > numberStart) {
+                try { parameter = Integer.parseInt((negative ? "-" : "") + input.substring(numberStart, i)); }
+                catch (NumberFormatException ignored) { }
+            }
+            if (i < input.length() && input.charAt(i) == ' ') i++;
+            if ("par".equals(word) || "line".equals(word)) output.append('\n');
+            else if ("tab".equals(word)) output.append('\t');
+            else if ("emdash".equals(word)) output.append('\u2014');
+            else if ("endash".equals(word)) output.append('\u2013');
+            else if ("bullet".equals(word)) output.append('\u2022');
+            else if ("lquote".equals(word)) output.append('\u2018');
+            else if ("rquote".equals(word)) output.append('\u2019');
+            else if ("ldblquote".equals(word)) output.append('\u201C');
+            else if ("rdblquote".equals(word)) output.append('\u201D');
+            else if ("uc".equals(word) && parameter != null) unicodeFallback = Math.max(0, Math.min(8, parameter));
+            else if ("u".equals(word) && parameter != null) {
+                int code = parameter < 0 ? parameter + 65536 : parameter;
+                output.append((char) code);
+                skipFallback = unicodeFallback;
+            }
+        }
+        return output.toString().replaceAll("\\n{3,}", "\\n\\n").trim();
+    }
+
+    private String escapeRtfText(String text) {
+        StringBuilder rtf = new StringBuilder("{\\rtf1\\ansi\\deff0\\uc1\n");
+        for (int i = 0; i < text.length(); i++) {
+            char ch = text.charAt(i);
+            if (ch == '\\') rtf.append("\\\\");
+            else if (ch == '{') rtf.append("\\{");
+            else if (ch == '}') rtf.append("\\}");
+            else if (ch == '\n' || ch == '\r') {
+                if (ch == '\n') rtf.append("\\par\n");
+            } else if (ch == '\t') rtf.append("\\tab ");
+            else if (ch >= 32 && ch <= 126) rtf.append(ch);
+            else rtf.append("\\u").append((short) ch).append('?');
+        }
+        return rtf.append('}').toString();
+    }
+
+    private void startRtfExport(String suggestedName, String text) {
+        pendingRtfExport = escapeRtfText(text);
+        Intent intent = new Intent(Intent.ACTION_CREATE_DOCUMENT);
+        intent.addCategory(Intent.CATEGORY_OPENABLE);
+        intent.setType("application/rtf");
+        intent.putExtra(Intent.EXTRA_TITLE, suggestedName.toLowerCase(Locale.ROOT).endsWith(".rtf") ? suggestedName : suggestedName + ".rtf");
+        try { startActivityForResult(intent, SAVE_RTF); }
+        catch (Exception e) {
+            pendingRtfExport = null;
+            Toast.makeText(this, "Could not open the Save RTF picker.", Toast.LENGTH_LONG).show();
         }
     }
 
@@ -2652,6 +2822,10 @@ public final class MainActivity extends Activity {
         content.addView(action("Export as DOCX", v -> {
             String filename = existing == null ? "MyOffice_Document.docx" : existing.getName().replaceFirst("(?i)\\.(txt|html)$", ".docx");
             exportWriterAsDocx(filename, body.getText(), body.getGravity());
+        }));
+        content.addView(action("Export as RTF", v -> {
+            String filename = existing == null ? "MyOffice_Document.rtf" : existing.getName().replaceFirst("(?i)\\.(txt|html)$", ".rtf");
+            startRtfExport(filename, body.getText().toString());
         }));
         content.addView(action("Discard changes", v -> new AlertDialog.Builder(this)
                 .setTitle("Discard this edit?")
