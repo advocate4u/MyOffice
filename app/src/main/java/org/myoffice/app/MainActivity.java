@@ -49,6 +49,7 @@ import java.util.Locale;
 import java.util.List;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
+import java.util.zip.ZipOutputStream;
 import javax.xml.parsers.DocumentBuilderFactory;
 import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
@@ -59,6 +60,8 @@ public final class MainActivity extends Activity {
     private static final int SAVE_PDF = 4103;
     private static final int SAVE_TEXT = 4104;
     private static final int SAVE_CSV = 4105;
+    private static final int SAVE_DOCX = 4106;
+    private File pendingDocxFile;
     private String pendingCsvExport;
     private String pendingTextExport;
     private File pendingPdfFile;
@@ -199,6 +202,28 @@ public final class MainActivity extends Activity {
             createPdfFromImagesAsync(images);
             return;
         }
+        if (request == SAVE_DOCX) {
+            File temp = pendingDocxFile;
+            pendingDocxFile = null;
+            if (result != RESULT_OK || data == null || data.getData() == null || temp == null) {
+                if (temp != null) temp.delete();
+                return;
+            }
+            try (InputStream in = new FileInputStream(temp);
+                 java.io.OutputStream out = getContentResolver().openOutputStream(data.getData(), "wt")) {
+                if (out == null) throw new IllegalStateException("Destination cannot be written");
+                byte[] buffer = new byte[8192];
+                int count;
+                while ((count = in.read(buffer)) != -1) out.write(buffer, 0, count);
+                out.flush();
+                temp.delete();
+                Toast.makeText(this, "DOCX exported.", Toast.LENGTH_SHORT).show();
+            } catch (Exception e) {
+                temp.delete();
+                Toast.makeText(this, "Could not export DOCX.", Toast.LENGTH_LONG).show();
+            }
+            return;
+        }
         if (request == SAVE_CSV) {
             String export = pendingCsvExport;
             pendingCsvExport = null;
@@ -279,6 +304,70 @@ public final class MainActivity extends Activity {
         catch (Exception e) {
             pendingCsvExport = null;
             Toast.makeText(this, "Could not open the Save CSV picker.", Toast.LENGTH_LONG).show();
+        }
+    }
+
+
+    private String xmlEscape(String value) {
+        return value.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+                .replace("\"", "&quot;").replace("'", "&apos;");
+    }
+
+    private void addDocxEntry(ZipOutputStream zip, String name, String value) throws Exception {
+        zip.putNextEntry(new ZipEntry(name));
+        zip.write(value.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+        zip.closeEntry();
+    }
+
+    private void writeDocxFile(File target, String text) throws Exception {
+        String contentTypes = "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>"
+                + "<Types xmlns=\"http://schemas.openxmlformats.org/package/2006/content-types\">"
+                + "<Default Extension=\"rels\" ContentType=\"application/vnd.openxmlformats-package.relationships+xml\"/>"
+                + "<Default Extension=\"xml\" ContentType=\"application/xml\"/>"
+                + "<Override PartName=\"/word/document.xml\" ContentType=\"application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml\"/>"
+                + "</Types>";
+        String relationships = "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>"
+                + "<Relationships xmlns=\"http://schemas.openxmlformats.org/package/2006/relationships\">"
+                + "<Relationship Id=\"rId1\" Type=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument\" Target=\"word/document.xml\"/>"
+                + "</Relationships>";
+        StringBuilder document = new StringBuilder("<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>")
+                .append("<w:document xmlns:w=\"http://schemas.openxmlformats.org/wordprocessingml/2006/main\"><w:body>");
+        String[] paragraphs = text.split("\\n", -1);
+        for (String paragraph : paragraphs) {
+            document.append("<w:p>");
+            String[] segments = paragraph.split("\\t", -1);
+            for (int i = 0; i < segments.length; i++) {
+                document.append("<w:r><w:t xml:space=\"preserve\">")
+                        .append(xmlEscape(segments[i])).append("</w:t></w:r>");
+                if (i < segments.length - 1) document.append("<w:r><w:tab/></w:r>");
+            }
+            document.append("</w:p>");
+        }
+        document.append("<w:sectPr><w:pgSz w:w=\"11906\" w:h=\"16838\"/>")
+                .append("<w:pgMar w:top=\"1440\" w:right=\"1440\" w:bottom=\"1440\" w:left=\"1440\" w:header=\"708\" w:footer=\"708\" w:gutter=\"0\"/>")
+                .append("</w:sectPr></w:body></w:document>");
+        try (ZipOutputStream zip = new ZipOutputStream(new FileOutputStream(target))) {
+            addDocxEntry(zip, "[Content_Types].xml", contentTypes);
+            addDocxEntry(zip, "_rels/.rels", relationships);
+            addDocxEntry(zip, "word/document.xml", document.toString());
+        }
+    }
+
+    private void exportWriterAsDocx(String suggestedName, String text) {
+        File temp = null;
+        try {
+            temp = File.createTempFile("myoffice_writer_", ".docx", getCacheDir());
+            writeDocxFile(temp, text);
+            pendingDocxFile = temp;
+            Intent intent = new Intent(Intent.ACTION_CREATE_DOCUMENT);
+            intent.addCategory(Intent.CATEGORY_OPENABLE);
+            intent.setType("application/vnd.openxmlformats-officedocument.wordprocessingml.document");
+            intent.putExtra(Intent.EXTRA_TITLE, suggestedName.endsWith(".docx") ? suggestedName : suggestedName + ".docx");
+            startActivityForResult(intent, SAVE_DOCX);
+        } catch (Exception e) {
+            if (temp != null) temp.delete();
+            pendingDocxFile = null;
+            Toast.makeText(this, "Could not prepare DOCX export.", Toast.LENGTH_LONG).show();
         }
     }
 
@@ -981,6 +1070,10 @@ public final class MainActivity extends Activity {
         content.addView(action("Export as .txt", v -> {
             String filename = existing == null ? "MyOffice_Document.txt" : existing.getName();
             startTextExport(filename, body.getText().toString());
+        }));
+        content.addView(action("Export as DOCX", v -> {
+            String filename = existing == null ? "MyOffice_Document.docx" : existing.getName().replaceFirst("(?i)\\.txt$", ".docx");
+            exportWriterAsDocx(filename, body.getText().toString());
         }));
         content.addView(action("Discard changes", v -> new AlertDialog.Builder(this)
                 .setTitle("Discard this edit?")
