@@ -47,6 +47,7 @@ An original Android office and learning app focused on free, offline-first use, 
 - Notes sorting (feature F38): switch between modified-date newest-first and title A–Z ordering while retaining the active search.
 - Writer sorting (feature F39): switch between modified-date newest-first and first-line title A–Z ordering while retaining the active search.
 - Spreadsheet library search/sort (feature F40): filter saved CSV sheets by filename or first-row preview and sort by modified date or filename.
+- Presentation library search/sort (feature F41): filter saved slide decks by title, first-slide text or filename and sort by modified date or title.
 - Text import (feature F14): open a supported text file in preview and optionally edit a local copy in Writer, preserving the original source.
 - Find-in-text (feature F15): search a text preview case-insensitively and highlight matching phrases locally.
 - Formula preview (feature F16): calculate read-only SUM, AVERAGE, MIN, MAX and COUNT over simple cell ranges in the CSV grid, without changing stored formula text.
@@ -109,6 +110,7 @@ The uploaded APK has not yet been run through REA/JADX in this environment becau
 - [F38 Notes sorting test plan](docs/testing/F38-notes-sorting-test-plan.md)
 - [F39 Writer sorting test plan](docs/testing/F39-writer-sorting-test-plan.md)
 - [F40 Spreadsheet library test plan](docs/testing/F40-spreadsheet-library-test-plan.md)
+- [F41 Presentation library test plan](docs/testing/F41-presentation-library-test-plan.md)
 - [F14 Text import test plan](docs/testing/F14-text-import-test-plan.md)
 - [F15 Find-in-text test plan](docs/testing/F15-find-in-text-test-plan.md)
 - [F16 Formula preview test plan](docs/testing/F16-formula-preview-test-plan.md)
