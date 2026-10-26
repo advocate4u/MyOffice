@@ -1469,7 +1469,15 @@ public final class MainActivity extends Activity {
     // Exports a rasterized copy so the chosen viewing rotation is baked into every page.
     // The source PDF is never modified; text selection/search in the output is not preserved.
     private void exportEditedPdfCopy(Uri source, String name, int rotationDegrees, String watermarkText) {
-        Toast.makeText(this, watermarkText == null || watermarkText.trim().isEmpty() ? "Preparing rotated PDF copy…" : "Preparing stamped PDF copy…", Toast.LENGTH_SHORT).show();
+        exportEditedPdfCopy(source, name, rotationDegrees, watermarkText, 1, Integer.MAX_VALUE);
+    }
+
+    private void exportEditedPdfCopy(Uri source, String name, int rotationDegrees, String watermarkText,
+                                     int requestedStartPage, int requestedEndPage) {
+        Toast.makeText(this, requestedStartPage != 1 || requestedEndPage != Integer.MAX_VALUE
+                ? "Preparing extracted PDF pages…" 
+                : (watermarkText == null || watermarkText.trim().isEmpty() ? "Preparing rotated PDF copy…" : "Preparing stamped PDF copy…"),
+                Toast.LENGTH_SHORT).show();
         new Thread(() -> {
             File temp = null;
             try (ParcelFileDescriptor descriptor = getContentResolver().openFileDescriptor(source, "r")) {
@@ -1482,7 +1490,12 @@ public final class MainActivity extends Activity {
                         int count = renderer.getPageCount();
                         if (count <= 0) throw new IllegalStateException("PDF has no pages");
                         if (count > 500) throw new IllegalStateException("This PDF has over 500 pages; export a smaller document");
-                        for (int i = 0; i < count; i++) {
+                        if (requestedStartPage < 1 || requestedEndPage < requestedStartPage || requestedStartPage > count) {
+                            throw new IllegalArgumentException("Choose a valid page range within the PDF.");
+                        }
+                        int firstPageIndex = requestedStartPage - 1;
+                        int lastPageExclusive = Math.min(count, requestedEndPage);
+                        for (int i = firstPageIndex; i < lastPageExclusive; i++) {
                             try (PdfRenderer.Page page = renderer.openPage(i)) {
                                 float scale = Math.min(1.5f, Math.min(1400f / page.getWidth(), 1800f / page.getHeight()));
                                 int width = Math.max(1, Math.round(page.getWidth() * scale));
@@ -1497,7 +1510,7 @@ public final class MainActivity extends Activity {
                                     bitmap = rotated;
                                 }
                                 PdfDocument.Page outputPage = output.startPage(
-                                        new PdfDocument.PageInfo.Builder(bitmap.getWidth(), bitmap.getHeight(), i + 1).create());
+                                        new PdfDocument.PageInfo.Builder(bitmap.getWidth(), bitmap.getHeight(), i - firstPageIndex + 1).create());
                                 outputPage.getCanvas().drawBitmap(bitmap, 0f, 0f, null);
                                 if (watermarkText != null && !watermarkText.trim().isEmpty()) {
                                     Paint stampPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
@@ -1530,7 +1543,11 @@ public final class MainActivity extends Activity {
                     create.setType("application/pdf");
                     String base = name.toLowerCase(Locale.ROOT).endsWith(".pdf")
                             ? name.substring(0, name.length() - 4) : name;
-                    create.putExtra(Intent.EXTRA_TITLE, base + ((watermarkText == null || watermarkText.trim().isEmpty()) ? "_rotated.pdf" : "_stamped.pdf"));
+                    String suggestedSuffix;
+                    if (watermarkText != null && !watermarkText.trim().isEmpty()) suggestedSuffix = "_stamped.pdf";
+                    else if (firstPageForName(requestedStartPage, requestedEndPage)) suggestedSuffix = "_rotated.pdf";
+                    else suggestedSuffix = "_pages_" + requestedStartPage + "-" + requestedEndPage + ".pdf";
+                    create.putExtra(Intent.EXTRA_TITLE, base + suggestedSuffix);
                     try { startActivityForResult(create, SAVE_PDF); }
                     catch (Exception e) {
                         pendingPdfFile = null;
@@ -1541,9 +1558,13 @@ public final class MainActivity extends Activity {
             } catch (Exception e) {
                 if (temp != null) temp.delete();
                 runOnUiThread(() -> Toast.makeText(this,
-                        "Could not export rotated PDF. Try a smaller, unencrypted PDF.", Toast.LENGTH_LONG).show());
+                        "Could not export PDF. Check the page range and try a smaller, unencrypted PDF.", Toast.LENGTH_LONG).show());
             }
         }, "MyOffice-PDF-export").start();
+    }
+
+    private boolean firstPageForName(int requestedStartPage, int requestedEndPage) {
+        return requestedStartPage == 1 && requestedEndPage == Integer.MAX_VALUE;
     }
 
     private void showPdf(Uri uri, String name) {
@@ -1629,6 +1650,36 @@ public final class MainActivity extends Activity {
             Toast.makeText(this, "PDF view reset to 0°.", Toast.LENGTH_SHORT).show();
         }));
         content.addView(action("Export rotated PDF copy", v -> exportEditedPdfCopy(uri, name, currentPdfRotationDegrees, "")));
+        content.addView(action("Extract pages to new PDF", v -> {
+            LinearLayout rangeFields = new LinearLayout(this);
+            rangeFields.setOrientation(LinearLayout.VERTICAL);
+            EditText startPageInput = new EditText(this);
+            startPageInput.setSingleLine(true);
+            startPageInput.setInputType(android.text.InputType.TYPE_CLASS_NUMBER);
+            startPageInput.setHint("First page (e.g. 1)");
+            startPageInput.setText("1");
+            rangeFields.addView(startPageInput);
+            EditText endPageInput = new EditText(this);
+            endPageInput.setSingleLine(true);
+            endPageInput.setInputType(android.text.InputType.TYPE_CLASS_NUMBER);
+            endPageInput.setHint("Last page (inclusive)");
+            rangeFields.addView(endPageInput);
+            new AlertDialog.Builder(this)
+                    .setTitle("Extract page range")
+                    .setMessage("Creates a new flattened PDF copy and leaves the original unchanged.")
+                    .setView(rangeFields)
+                    .setNegativeButton("Cancel", (dialog, which) -> dialog.dismiss())
+                    .setPositiveButton("Export pages", (dialog, which) -> {
+                        try {
+                            int first = Integer.parseInt(startPageInput.getText().toString().trim());
+                            int last = Integer.parseInt(endPageInput.getText().toString().trim());
+                            if (first < 1 || last < first) throw new NumberFormatException();
+                            exportEditedPdfCopy(uri, name, currentPdfRotationDegrees, "", first, last);
+                        } catch (NumberFormatException e) {
+                            Toast.makeText(this, "Enter a valid first and last page number.", Toast.LENGTH_SHORT).show();
+                        }
+                    }).show();
+        }));
         content.addView(action("Add watermark / stamp", v -> {
             EditText stampInput = new EditText(this);
             stampInput.setSingleLine(true);
