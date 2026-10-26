@@ -31,6 +31,7 @@ An original Android office and learning app focused on free, offline-first use, 
 - Find-in-text (feature F15): search a text preview case-insensitively and highlight matching phrases locally.
 - Formula preview (feature F16): calculate read-only SUM, AVERAGE, MIN, MAX and COUNT over simple cell ranges in the CSV grid, without changing stored formula text.
 - Slideshow (feature F17): present text-only slide decks in a read-only slide view with previous/next navigation.
+- DOCX text import (feature F18): extract paragraph text from a local DOCX package into a new Writer copy; original is unchanged and formatting/images are not preserved.
 - No login or network permission is required for these core features.
 - Rich-text formatting, DOCX import/export, formulas, XLSX/PPTX import/export, slide themes/images/animations, camera scanning/OCR, PDF annotation/search and advanced office functionality are not implemented yet.
 
@@ -70,6 +71,7 @@ The uploaded APK has not yet been run through REA/JADX in this environment becau
 - [F15 Find-in-text test plan](docs/testing/F15-find-in-text-test-plan.md)
 - [F16 Formula preview test plan](docs/testing/F16-formula-preview-test-plan.md)
 - [F17 Slideshow test plan](docs/testing/F17-slideshow-test-plan.md)
+- [F18 DOCX text import test plan](docs/testing/F18-docx-import-test-plan.md)
 
 ## Current status
 
