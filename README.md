@@ -33,6 +33,7 @@ An original Android office and learning app focused on free, offline-first use, 
 - Writer bullet and numbered lists (feature F61): prefix selected lines with bullets or sequential numbers, toggle an existing list off, and persist list markers as editable text in TXT/HTML documents.
 - Spreadsheet first milestone (feature F5): editable local CSV grid with add-row/add-column controls, quoted-field parsing/escaping, and local save/reopen.
 - Presentation first milestone (feature F6): create/edit/save/reopen local text-only slide decks, navigate slides, add slides, and share current slide text.
+- Basic PPTX text import (feature F81): import up to 100 slides from a local PPTX into a new editable text-only deck, keeping the original unchanged. Text is extracted from sequential slide XML parts; themes, images, charts, animations, layout fidelity, and PPTX export are not supported.
 - Image-to-PDF first milestone (feature F7): select up to 20 local images, create a multi-page PDF on-device, and choose a destination through Android's Save document picker.
 - Text export (feature F8): export local notes and Writer content to a user-selected UTF-8 `.txt` file using Android's Save document picker.
 - CSV import (feature F9): open an existing local CSV into the editable grid, with a 1 MiB import limit and save-as-new behavior that leaves the original file unchanged.
@@ -97,7 +98,7 @@ An original Android office and learning app focused on free, offline-first use, 
 - DOCX formatted export (feature F64): export Writer rich-text runs with bold, italic, underline, strikethrough, text color, highlight and relative font size, plus the current left/center/right paragraph alignment. This is a focused compatibility subset, not full Word fidelity.
 - Arithmetic formula preview (feature F20): preview `=A1+B1`, subtraction, multiplication and division using numeric cell references, alongside the aggregate formulas from F16.
 - No login or network permission is required for these core features.
-- Advanced Word compatibility (preserving DOCX formatting, tables and images), XLSX/PPTX import/export, slide themes/images/animations, camera scanning/OCR, PDF text search/native annotations and other advanced office functionality are still in development.
+- Advanced Word compatibility (preserving DOCX formatting, tables and images), full XLSX/PPTX round-trip import/export, slide themes/images/animations, camera scanning/OCR, PDF text search/native annotations and other advanced office functionality are still in development.
 
 ## Build and APK workflow
 
