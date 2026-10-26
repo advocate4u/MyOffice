@@ -33,7 +33,8 @@ An original Android office and learning app focused on free, offline-first use, 
 - Writer bullet and numbered lists (feature F61): prefix selected lines with bullets or sequential numbers, toggle an existing list off, and persist list markers as editable text in TXT/HTML documents.
 - Spreadsheet first milestone (feature F5): editable local CSV grid with add-row/add-column controls, quoted-field parsing/escaping, and local save/reopen.
 - Presentation first milestone (feature F6): create/edit/save/reopen local text-only slide decks, navigate slides, add slides, and share current slide text.
-- Basic PPTX text import (feature F81): import up to 100 slides from a local PPTX into a new editable text-only deck, keeping the original unchanged. Text is extracted from sequential slide XML parts; themes, images, charts, animations, layout fidelity, and PPTX export are not supported.
+- Basic PPTX text import (feature F81): import up to 100 slides from a local PPTX into a new editable text-only deck, keeping the original unchanged. Themes, images, charts, animations, layout fidelity, and PPTX export are not supported.
+- PPTX custom slide order (feature F82): follow the slide list in `ppt/presentation.xml` and its relationship map when available, with numeric slide-file order as a safe fallback for nonstandard packages.
 - Image-to-PDF first milestone (feature F7): select up to 20 local images, create a multi-page PDF on-device, and choose a destination through Android's Save document picker.
 - Text export (feature F8): export local notes and Writer content to a user-selected UTF-8 `.txt` file using Android's Save document picker.
 - CSV import (feature F9): open an existing local CSV into the editable grid, with a 1 MiB import limit and save-as-new behavior that leaves the original file unchanged.
@@ -183,6 +184,7 @@ The uploaded APK has not yet been run through REA/JADX in this environment becau
 - [F79 RTF paragraph alignment export test plan](docs/testing/F79-rtf-paragraph-alignment-export-test-plan.md)
 - [F80 RTF paragraph alignment import test plan](docs/testing/F80-rtf-paragraph-alignment-import-test-plan.md)
 - [F81 PPTX text import test plan](docs/testing/F81-pptx-text-import-test-plan.md)
+- [F82 PPTX slide order test plan](docs/testing/F82-pptx-slide-order-test-plan.md)
 - [F77 PDF page PNG export test plan](docs/testing/F77-pdf-page-png-export-test-plan.md)
 - [F76 RTF formatting export test plan](docs/testing/F76-rtf-formatting-export-test-plan.md)
 - [F14 Text import test plan](docs/testing/F14-text-import-test-plan.md)
