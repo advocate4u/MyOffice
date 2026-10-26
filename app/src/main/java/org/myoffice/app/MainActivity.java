@@ -1130,6 +1130,7 @@ public final class MainActivity extends Activity {
                 if (worksheets.isEmpty()) throw new IllegalArgumentException("No worksheet XML was found");
                 String[] labels = new String[worksheets.size()];
                 for (int i = 0; i < labels.length; i++) labels[i] = worksheets.get(i).name;
+                final String selectedMime = mime;
                 new AlertDialog.Builder(this)
                         .setTitle("Choose worksheet to import")
                         .setItems(labels, (dialog, which) -> {
@@ -1139,7 +1140,7 @@ public final class MainActivity extends Activity {
                                 showSpreadsheetEditor(null, imported, true);
                             } catch (Exception e) {
                                 Toast.makeText(this, "Could not import this worksheet. Basic cell values are supported.", Toast.LENGTH_LONG).show();
-                                showDetails(uri, name, mime);
+                                showDetails(uri, name, selectedMime);
                             }
                         })
                         .setNegativeButton("Cancel", (dialog, which) -> dialog.dismiss())
