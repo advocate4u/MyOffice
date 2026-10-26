@@ -76,6 +76,7 @@ public final class MainActivity extends Activity {
     private static final int SAVE_CSV = 4105;
     private static final int SAVE_DOCX = 4106;
     private static final int SAVE_PDF_COPY = 4107;
+    private static final int PICK_PDFS = 4109;
     private static final int SAVE_XLSX = 4108;
     private File pendingDocxFile;
     private File pendingXlsxFile;
@@ -84,6 +85,7 @@ public final class MainActivity extends Activity {
     private File pendingPdfFile;
     private int currentPdfRotationDegrees = 0;
     private Uri pendingPdfCopySource;
+    private ArrayList<Uri> pendingPdfMergeSources;
     private static final String PREFS = "myoffice_recent";
     private static final String KEY = "uris";
     private static final String FAVORITES_PREFS = "myoffice_favorites";
@@ -353,6 +355,29 @@ public final class MainActivity extends Activity {
 
     @Override protected void onActivityResult(int request, int result, Intent data) {
         super.onActivityResult(request, result, data);
+        if (request == PICK_PDFS) {
+            ArrayList<Uri> sources = pendingPdfMergeSources;
+            pendingPdfMergeSources = null;
+            if (result != RESULT_OK || data == null || sources == null) return;
+            ArrayList<Uri> chosen = new ArrayList<>(sources);
+            if (data.getClipData() != null) {
+                for (int i = 0; i < data.getClipData().getItemCount(); i++) {
+                    Uri selected = data.getClipData().getItemAt(i).getUri();
+                    if (selected != null && !containsUri(chosen, selected)) chosen.add(selected);
+                    if (selected != null) persistReadPermission(data, selected);
+                }
+            } else if (data.getData() != null) {
+                Uri selected = data.getData();
+                if (!containsUri(chosen, selected)) chosen.add(selected);
+                persistReadPermission(data, selected);
+            }
+            if (chosen.size() < 2) {
+                Toast.makeText(this, "Choose at least one additional PDF to merge.", Toast.LENGTH_LONG).show();
+                return;
+            }
+            createMergedPdfAsync(chosen, nameOf(chosen.get(0)));
+            return;
+        }
         if (request == PICK_IMAGES) {
             if (result != RESULT_OK || data == null) return;
             ArrayList<Uri> images = new ArrayList<>();
@@ -1557,6 +1582,101 @@ public final class MainActivity extends Activity {
 
 
     // Basic local PDF reader using Android's built-in PdfRenderer. It does not upload the document.
+    private boolean containsUri(ArrayList<Uri> uris, Uri target) {
+        for (Uri uri : uris) if (uri.toString().equals(target.toString())) return true;
+        return false;
+    }
+
+    private void persistReadPermission(Intent data, Uri uri) {
+        try {
+            int flags = data.getFlags() & (Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_GRANT_WRITE_URI_PERMISSION);
+            getContentResolver().takePersistableUriPermission(uri, flags);
+        } catch (SecurityException ignored) { }
+    }
+
+    private void openPdfMergePicker(Uri currentSource, String currentName) {
+        pendingPdfMergeSources = new ArrayList<>();
+        pendingPdfMergeSources.add(currentSource);
+        Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT);
+        intent.addCategory(Intent.CATEGORY_OPENABLE);
+        intent.setType("application/pdf");
+        intent.putExtra(Intent.EXTRA_ALLOW_MULTIPLE, true);
+        intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION);
+        try { startActivityForResult(intent, PICK_PDFS); }
+        catch (Exception e) {
+            pendingPdfMergeSources = null;
+            Toast.makeText(this, "Could not open the PDF picker.", Toast.LENGTH_LONG).show();
+        }
+    }
+
+    private void createMergedPdfAsync(ArrayList<Uri> sources, String sourceName) {
+        Toast.makeText(this, "Preparing merged PDF on this device…", Toast.LENGTH_SHORT).show();
+        new Thread(() -> {
+            File temp = null;
+            try {
+                temp = File.createTempFile("myoffice_merged_", ".pdf", getCacheDir());
+                try (FileOutputStream stream = new FileOutputStream(temp)) {
+                    PdfDocument output = new PdfDocument();
+                    try {
+                        int outputPageNumber = 0;
+                        for (Uri source : sources) {
+                            try (ParcelFileDescriptor descriptor = getContentResolver().openFileDescriptor(source, "r")) {
+                                if (descriptor == null) throw new IllegalStateException("A PDF source is unavailable");
+                                PdfRenderer renderer = new PdfRenderer(descriptor);
+                                try {
+                                    for (int i = 0; i < renderer.getPageCount(); i++) {
+                                        if (outputPageNumber >= 500) throw new IllegalArgumentException("Merged PDF would exceed 500 pages");
+                                        try (PdfRenderer.Page page = renderer.openPage(i)) {
+                                            float scale = Math.min(1.25f, Math.min(1400f / page.getWidth(), 1800f / page.getHeight()));
+                                            int width = Math.max(1, Math.round(page.getWidth() * scale));
+                                            int height = Math.max(1, Math.round(page.getHeight() * scale));
+                                            Bitmap bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888);
+                                            page.render(bitmap, null, null, PdfRenderer.Page.RENDER_MODE_FOR_DISPLAY);
+                                            outputPageNumber++;
+                                            PdfDocument.Page outputPage = output.startPage(
+                                                    new PdfDocument.PageInfo.Builder(bitmap.getWidth(), bitmap.getHeight(), outputPageNumber).create());
+                                            outputPage.getCanvas().drawBitmap(bitmap, 0f, 0f, null);
+                                            output.finishPage(outputPage);
+                                            bitmap.recycle();
+                                        }
+                                    }
+                                } finally {
+                                    renderer.close();
+                                }
+                            }
+                        }
+                        if (outputPageNumber == 0) throw new IllegalArgumentException("No readable pages were found");
+                        output.writeTo(stream);
+                        stream.flush();
+                    } finally {
+                        output.close();
+                    }
+                }
+                File ready = temp;
+                runOnUiThread(() -> {
+                    if (isFinishing()) { ready.delete(); return; }
+                    pendingPdfFile = ready;
+                    Intent create = new Intent(Intent.ACTION_CREATE_DOCUMENT);
+                    create.addCategory(Intent.CATEGORY_OPENABLE);
+                    create.setType("application/pdf");
+                    String base = sourceName.toLowerCase(Locale.ROOT).endsWith(".pdf")
+                            ? sourceName.substring(0, sourceName.length() - 4) : sourceName;
+                    create.putExtra(Intent.EXTRA_TITLE, base + "_merged.pdf");
+                    try { startActivityForResult(create, SAVE_PDF); }
+                    catch (Exception e) {
+                        pendingPdfFile = null;
+                        ready.delete();
+                        Toast.makeText(this, "Could not open the Save PDF picker.", Toast.LENGTH_LONG).show();
+                    }
+                });
+            } catch (Exception e) {
+                if (temp != null) temp.delete();
+                runOnUiThread(() -> Toast.makeText(this,
+                        "Could not merge PDFs. Check that each source is readable and unencrypted.", Toast.LENGTH_LONG).show());
+            }
+        }, "MyOffice-PDF-merge").start();
+    }
+
     private void startPdfCopy(Uri source, String name) {
         pendingPdfCopySource = source;
         String suggested = name.toLowerCase(Locale.ROOT).endsWith(".pdf") ? name : name + ".pdf";
@@ -1821,6 +1941,7 @@ public final class MainActivity extends Activity {
         navigation.addView(next, new LinearLayout.LayoutParams(0, -2, 1));
         content.addView(navigation);
         content.addView(action("Save a copy", v -> startPdfCopy(uri, name)));
+        content.addView(action("Merge with other PDFs", v -> openPdfMergePicker(uri, name)));
         content.addView(action("Share PDF", v -> {
             Intent share = new Intent(Intent.ACTION_SEND);
             share.setType("application/pdf");
