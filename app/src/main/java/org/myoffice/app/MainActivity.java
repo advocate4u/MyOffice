@@ -2287,6 +2287,25 @@ public final class MainActivity extends Activity {
             try { startActivity(Intent.createChooser(share, "Share slide text")); }
             catch (Exception e) { Toast.makeText(this, "No compatible sharing app was found.", Toast.LENGTH_LONG).show(); }
         }));
+        content.addView(action("Share entire presentation", v -> {
+            syncDeckEditor();
+            StringBuilder allSlides = new StringBuilder();
+            for (int slideNo = 0; slideNo < deckSlides.size(); slideNo++) {
+                Slide item = deckSlides.get(slideNo);
+                allSlides.append("Slide ").append(slideNo + 1).append("\\n");
+                if (!item.title.trim().isEmpty()) allSlides.append(item.title.trim()).append("\\n");
+                allSlides.append(item.body);
+                if (slideNo < deckSlides.size() - 1) allSlides.append("\\n\\n--------------------\\n\\n");
+            }
+            String subject = deckSlides.get(0).title.trim();
+            if (subject.isEmpty()) subject = "MyOffice Presentation";
+            Intent share = new Intent(Intent.ACTION_SEND);
+            share.setType("text/plain");
+            share.putExtra(Intent.EXTRA_SUBJECT, subject);
+            share.putExtra(Intent.EXTRA_TEXT, allSlides.toString());
+            try { startActivity(Intent.createChooser(share, "Share entire presentation")); }
+            catch (Exception e) { Toast.makeText(this, "No compatible sharing app was found.", Toast.LENGTH_LONG).show(); }
+        }));
         content.addView(action("Discard changes", v -> new AlertDialog.Builder(this)
                 .setTitle("Discard this deck edit?")
                 .setMessage("Unsaved changes will be lost.")
