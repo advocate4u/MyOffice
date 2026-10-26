@@ -533,16 +533,125 @@ public final class MainActivity extends Activity {
         }
     }
 
-    private void exportWriterAsDocx(String suggestedName, String text) {
+    private String docxRunProperties(Spanned richText, int position) {
+        boolean bold = false;
+        boolean italic = false;
+        boolean underline = false;
+        boolean strike = false;
+        Integer foreground = null;
+        Integer background = null;
+        Float sizeChange = null;
+        Object[] spans = richText.getSpans(position, Math.min(richText.length(), position + 1), Object.class);
+        for (Object span : spans) {
+            if (span instanceof StyleSpan) {
+                int style = ((StyleSpan) span).getStyle();
+                if ((style & Typeface.BOLD) != 0) bold = true;
+                if ((style & Typeface.ITALIC) != 0) italic = true;
+            } else if (span instanceof UnderlineSpan) {
+                underline = true;
+            } else if (span instanceof StrikethroughSpan) {
+                strike = true;
+            } else if (span instanceof ForegroundColorSpan) {
+                foreground = ((ForegroundColorSpan) span).getForegroundColor();
+            } else if (span instanceof BackgroundColorSpan) {
+                background = ((BackgroundColorSpan) span).getBackgroundColor();
+            } else if (span instanceof RelativeSizeSpan) {
+                sizeChange = ((RelativeSizeSpan) span).getSizeChange();
+            }
+        }
+        StringBuilder properties = new StringBuilder();
+        if (bold) properties.append("<w:b/>");
+        if (italic) properties.append("<w:i/>");
+        if (underline) properties.append("<w:u w:val=\"single\"/>");
+        if (strike) properties.append("<w:strike/>");
+        if (foreground != null) properties.append("<w:color w:val=\"")
+                .append(String.format(Locale.ROOT, "%06X", foreground & 0xFFFFFF)).append("\"/>");
+        if (background != null) {
+            int color = background & 0xFFFFFF;
+            if (color == 0xFFFF00) properties.append("<w:highlight w:val=\"yellow\"/>");
+            else properties.append("<w:shd w:val=\"clear\" w:color=\"auto\" w:fill=\"")
+                    .append(String.format(Locale.ROOT, "%06X", color)).append("\"/>");
+        }
+        if (sizeChange != null) {
+            int halfPoints = Math.max(2, Math.min(144, Math.round(24f * sizeChange)));
+            properties.append("<w:sz w:val=\"").append(halfPoints).append("\"/>");
+            properties.append("<w:szCs w:val=\"").append(halfPoints).append("\"/>");
+        }
+        return properties.length() == 0 ? "" : "<w:rPr>" + properties + "</w:rPr>";
+    }
+
+    private void appendFormattedDocxParagraph(StringBuilder document, Spanned richText, int start, int end) {
+        String plain = richText.toString();
+        int position = start;
+        while (position < end) {
+            if (plain.charAt(position) == '\\t') {
+                document.append("<w:r><w:tab/></w:r>");
+                position++;
+                continue;
+            }
+            String properties = docxRunProperties(richText, position);
+            int runStart = position;
+            while (position < end && plain.charAt(position) != '\\t'
+                    && properties.equals(docxRunProperties(richText, position))) {
+                int codePoint = plain.codePointAt(position);
+                position += Character.charCount(codePoint);
+            }
+            document.append("<w:r>");
+            if (!properties.isEmpty()) document.append(properties);
+            document.append("<w:t xml:space=\"preserve\">")
+                    .append(xmlEscape(plain.substring(runStart, position)))
+                    .append("</w:t></w:r>");
+        }
+    }
+
+    private void writeDocxFile(File target, Spanned richText, int alignmentGravity) throws Exception {
+        String contentTypes = "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>"
+                + "<Types xmlns=\"http://schemas.openxmlformats.org/package/2006/content-types\">"
+                + "<Default Extension=\"rels\" ContentType=\"application/vnd.openxmlformats-package.relationships+xml\"/>"
+                + "<Default Extension=\"xml\" ContentType=\"application/xml\"/>"
+                + "<Override PartName=\"/word/document.xml\" ContentType=\"application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml\"/>"
+                + "</Types>";
+        String relationships = "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>"
+                + "<Relationships xmlns=\"http://schemas.openxmlformats.org/package/2006/relationships\">"
+                + "<Relationship Id=\"rId1\" Type=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument\" Target=\"word/document.xml\"/>"
+                + "</Relationships>";
+        String plain = richText.toString();
+        StringBuilder document = new StringBuilder("<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>")
+                .append("<w:document xmlns:w=\"http://schemas.openxmlformats.org/wordprocessingml/2006/main\"><w:body>");
+        int start = 0;
+        do {
+            int newline = plain.indexOf('\\n', start);
+            int end = newline < 0 ? plain.length() : newline;
+            document.append("<w:p>");
+            int horizontal = alignmentGravity & Gravity.HORIZONTAL_GRAVITY_MASK;
+            if (horizontal == Gravity.CENTER_HORIZONTAL) document.append("<w:pPr><w:jc w:val=\"center\"/></w:pPr>");
+            else if (horizontal == Gravity.RIGHT) document.append("<w:pPr><w:jc w:val=\"right\"/></w:pPr>");
+            else if (horizontal == Gravity.FILL_HORIZONTAL) document.append("<w:pPr><w:jc w:val=\"both\"/></w:pPr>");
+            appendFormattedDocxParagraph(document, richText, start, end);
+            document.append("</w:p>");
+            if (newline < 0) break;
+            start = newline + 1;
+        } while (start <= plain.length());
+        document.append("<w:sectPr><w:pgSz w:w=\"11906\" w:h=\"16838\"/>")
+                .append("<w:pgMar w:top=\"1440\" w:right=\"1440\" w:bottom=\"1440\" w:left=\"1440\" w:header=\"708\" w:footer=\"708\" w:gutter=\"0\"/>")
+                .append("</w:sectPr></w:body></w:document>");
+        try (ZipOutputStream zip = new ZipOutputStream(new FileOutputStream(target))) {
+            addDocxEntry(zip, "[Content_Types].xml", contentTypes);
+            addDocxEntry(zip, "_rels/.rels", relationships);
+            addDocxEntry(zip, "word/document.xml", document.toString());
+        }
+    }
+
+    private void exportWriterAsDocx(String suggestedName, Spanned richText, int alignmentGravity) {
         File temp = null;
         try {
             temp = File.createTempFile("myoffice_writer_", ".docx", getCacheDir());
-            writeDocxFile(temp, text);
+            writeDocxFile(temp, richText, alignmentGravity);
             pendingDocxFile = temp;
             Intent intent = new Intent(Intent.ACTION_CREATE_DOCUMENT);
             intent.addCategory(Intent.CATEGORY_OPENABLE);
             intent.setType("application/vnd.openxmlformats-officedocument.wordprocessingml.document");
-            intent.putExtra(Intent.EXTRA_TITLE, suggestedName.endsWith(".docx") ? suggestedName : suggestedName + ".docx");
+            intent.putExtra(Intent.EXTRA_TITLE, suggestedName.toLowerCase(Locale.ROOT).endsWith(".docx") ? suggestedName : suggestedName + ".docx");
             startActivityForResult(intent, SAVE_DOCX);
         } catch (Exception e) {
             if (temp != null) temp.delete();
@@ -1970,8 +2079,8 @@ public final class MainActivity extends Activity {
             startTextExport(filename, body.getText().toString());
         }));
         content.addView(action("Export as DOCX", v -> {
-            String filename = existing == null ? "MyOffice_Document.docx" : existing.getName().replaceFirst("(?i)\\.txt$", ".docx");
-            exportWriterAsDocx(filename, body.getText().toString());
+            String filename = existing == null ? "MyOffice_Document.docx" : existing.getName().replaceFirst("(?i)\\.(txt|html)$", ".docx");
+            exportWriterAsDocx(filename, body.getText(), body.getGravity());
         }));
         content.addView(action("Discard changes", v -> new AlertDialog.Builder(this)
                 .setTitle("Discard this edit?")
