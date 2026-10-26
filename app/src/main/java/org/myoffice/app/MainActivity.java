@@ -37,6 +37,7 @@ import android.text.Html;
 import android.text.Spanned;
 import android.text.TextWatcher;
 import android.text.SpannableString;
+import android.text.SpannableStringBuilder;
 import android.text.style.BackgroundColorSpan;
 import android.text.style.ForegroundColorSpan;
 import android.text.style.StyleSpan;
@@ -828,9 +829,9 @@ public final class MainActivity extends Activity {
         }
         if (lower.endsWith(".docx") || mime.equals("application/vnd.openxmlformats-officedocument.wordprocessingml.document")) {
             try {
-                String text = readDocxText(uri);
-                Toast.makeText(this, "DOCX text imported into Writer as a copy. Formatting and images are not preserved.", Toast.LENGTH_LONG).show();
-                showWriterEditor(null, text);
+                Spanned imported = readDocxRichText(uri);
+                Toast.makeText(this, "DOCX text and basic character formatting imported as a new Writer copy. Images, tables and advanced Word features are not preserved.", Toast.LENGTH_LONG).show();
+                showWriterEditor(null, imported);
                 return;
             } catch (Exception e) {
                 Toast.makeText(this, "Could not import text from this DOCX file.", Toast.LENGTH_LONG).show();
@@ -850,6 +851,10 @@ public final class MainActivity extends Activity {
 
 
     private String readDocxText(Uri uri) throws Exception {
+        return readDocxRichText(uri).toString();
+    }
+
+    private SpannableStringBuilder readDocxRichText(Uri uri) throws Exception {
         if (sizeOf(uri) > 10L * 1024L * 1024L) throw new IllegalArgumentException("DOCX exceeds the 10 MiB import limit");
         byte[] documentXml = null;
         InputStream source = getContentResolver().openInputStream(uri);
@@ -883,12 +888,92 @@ public final class MainActivity extends Activity {
         org.w3c.dom.Document document = factory.newDocumentBuilder().parse(new ByteArrayInputStream(documentXml));
         String wordNamespace = "http://schemas.openxmlformats.org/wordprocessingml/2006/main";
         NodeList paragraphs = document.getElementsByTagNameNS(wordNamespace, "p");
-        StringBuilder text = new StringBuilder();
+        SpannableStringBuilder richText = new SpannableStringBuilder();
         for (int i = 0; i < paragraphs.getLength(); i++) {
-            appendWordParagraph(paragraphs.item(i), text);
-            if (i < paragraphs.getLength() - 1) text.append('\n');
+            appendWordRichNode(paragraphs.item(i), richText);
+            if (i < paragraphs.getLength() - 1) richText.append('\n');
         }
-        return text.toString();
+        return richText;
+    }
+
+    private void appendWordRichNode(Node node, SpannableStringBuilder out) {
+        if (node.getNodeType() == Node.ELEMENT_NODE) {
+            String local = node.getLocalName();
+            if ("t".equals(local)) { out.append(node.getTextContent()); return; }
+            if ("tab".equals(local)) { out.append('\t'); return; }
+            if ("br".equals(local) || "cr".equals(local)) { out.append('\n'); return; }
+            if ("r".equals(local)) {
+                int runStart = out.length();
+                Node child = node.getFirstChild();
+                while (child != null) {
+                    if (!(child.getNodeType() == Node.ELEMENT_NODE && "rPr".equals(child.getLocalName()))) {
+                        appendWordRichNode(child, out);
+                    }
+                    child = child.getNextSibling();
+                }
+                applyWordRunProperties(node, out, runStart, out.length());
+                return;
+            }
+        }
+        Node child = node.getFirstChild();
+        while (child != null) {
+            appendWordRichNode(child, out);
+            child = child.getNextSibling();
+        }
+    }
+
+    private String wordAttribute(Node node, String name) {
+        if (node == null || node.getAttributes() == null) return "";
+        Node value = node.getAttributes().getNamedItemNS("http://schemas.openxmlformats.org/wordprocessingml/2006/main", name);
+        if (value == null) value = node.getAttributes().getNamedItem("w:" + name);
+        if (value == null) value = node.getAttributes().getNamedItem(name);
+        return value == null ? "" : value.getNodeValue();
+    }
+
+    private void applyWordRunProperties(Node run, SpannableStringBuilder out, int start, int end) {
+        if (end <= start) return;
+        Node runProperties = null;
+        Node child = run.getFirstChild();
+        while (child != null) {
+            if (child.getNodeType() == Node.ELEMENT_NODE && "rPr".equals(child.getLocalName())) {
+                runProperties = child;
+                break;
+            }
+            child = child.getNextSibling();
+        }
+        if (runProperties == null) return;
+        child = runProperties.getFirstChild();
+        while (child != null) {
+            if (child.getNodeType() == Node.ELEMENT_NODE) {
+                String local = child.getLocalName();
+                if ("b".equals(local)) out.setSpan(new StyleSpan(Typeface.BOLD), start, end, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+                else if ("i".equals(local)) out.setSpan(new StyleSpan(Typeface.ITALIC), start, end, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+                else if ("u".equals(local)) out.setSpan(new UnderlineSpan(), start, end, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+                else if ("strike".equals(local) || "dstrike".equals(local)) out.setSpan(new StrikethroughSpan(), start, end, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+                else if ("color".equals(local)) {
+                    String hex = wordAttribute(child, "val");
+                    try { if (hex.matches("(?i)[0-9a-f]{6}")) out.setSpan(new ForegroundColorSpan(0xFF000000 | Integer.parseInt(hex, 16)), start, end, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE); }
+                    catch (NumberFormatException ignored) { }
+                } else if ("highlight".equals(local)) {
+                    String color = wordAttribute(child, "val");
+                    int parsed = "yellow".equalsIgnoreCase(color) ? 0xFFFFFF00
+                            : "green".equalsIgnoreCase(color) ? 0xFF00FF00
+                            : "cyan".equalsIgnoreCase(color) ? 0xFF00FFFF
+                            : "magenta".equalsIgnoreCase(color) ? 0xFFFF00FF
+                            : "red".equalsIgnoreCase(color) ? 0xFFFF0000
+                            : "blue".equalsIgnoreCase(color) ? 0xFF0000FF
+                            : "none".equalsIgnoreCase(color) ? 0 : 0xFFFFFF00;
+                    if (parsed != 0) out.setSpan(new BackgroundColorSpan(parsed), start, end, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+                } else if ("sz".equals(local)) {
+                    String halfPoints = wordAttribute(child, "val");
+                    try {
+                        float ratio = Float.parseFloat(halfPoints) / 24f;
+                        if (ratio > 0.2f && ratio < 6f) out.setSpan(new RelativeSizeSpan(ratio), start, end, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+                    } catch (NumberFormatException ignored) { }
+                }
+            }
+            child = child.getNextSibling();
+        }
     }
 
     private void appendWordParagraph(Node node, StringBuilder out) {
@@ -1969,7 +2054,15 @@ public final class MainActivity extends Activity {
                 .show();
     }
 
+    private void showWriterEditor(File existing, Spanned initialRichText) {
+        showWriterEditor(existing, initialRichText == null ? "" : initialRichText.toString(), initialRichText);
+    }
+
     private void showWriterEditor(File existing, String initialText) {
+        showWriterEditor(existing, initialText, null);
+    }
+
+    private void showWriterEditor(File existing, String initialText, Spanned initialRichText) {
         LinearLayout content = column();
         TextView back = label("‹  Back to Writer", 16, true);
         content.addView(back);
@@ -1980,7 +2073,7 @@ public final class MainActivity extends Activity {
         body.setMinLines(16);
         body.setTextSize(16);
         body.setHint("Start writing…");
-        body.setText(initialText);
+        body.setText(initialRichText == null ? initialText : initialRichText);
         if (existing != null && existing.getName().toLowerCase(Locale.ROOT).endsWith(".html")) {
             try { body.setText(Html.fromHtml(readWriterRawFile(existing), Html.FROM_HTML_MODE_LEGACY)); }
             catch (Exception ignored) { }
