@@ -551,38 +551,38 @@ public final class MainActivity extends Activity {
         for (ArrayList<String> row : rows) {
             if (row.size() > 50) throw new IllegalArgumentException("XLSX export is limited to 50 columns");
         }
-        String contentTypes = "<?xml version=\\"1.0\\" encoding=\\"UTF-8\\" standalone=\\"yes\\"?>"
-                + "<Types xmlns=\\"http://schemas.openxmlformats.org/package/2006/content-types\\">"
-                + "<Default Extension=\\"rels\\" ContentType=\\"application/vnd.openxmlformats-package.relationships+xml\\"/>"
-                + "<Default Extension=\\"xml\\" ContentType=\\"application/xml\\"/>"
-                + "<Override PartName=\\"/xl/workbook.xml\\" ContentType=\\"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml\\"/>"
-                + "<Override PartName=\\"/xl/worksheets/sheet1.xml\\" ContentType=\\"application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml\\"/>"
+        String contentTypes = "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>"
+                + "<Types xmlns=\"http://schemas.openxmlformats.org/package/2006/content-types\">"
+                + "<Default Extension=\"rels\" ContentType=\"application/vnd.openxmlformats-package.relationships+xml\"/>"
+                + "<Default Extension=\"xml\" ContentType=\"application/xml\"/>"
+                + "<Override PartName=\"/xl/workbook.xml\" ContentType=\"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml\"/>"
+                + "<Override PartName=\"/xl/worksheets/sheet1.xml\" ContentType=\"application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml\"/>"
                 + "</Types>";
-        String rootRelationships = "<?xml version=\\"1.0\\" encoding=\\"UTF-8\\" standalone=\\"yes\\"?>"
-                + "<Relationships xmlns=\\"http://schemas.openxmlformats.org/package/2006/relationships\\">"
-                + "<Relationship Id=\\"rId1\\" Type=\\"http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument\\" Target=\\"xl/workbook.xml\\"/>"
+        String rootRelationships = "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>"
+                + "<Relationships xmlns=\"http://schemas.openxmlformats.org/package/2006/relationships\">"
+                + "<Relationship Id=\"rId1\" Type=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument\" Target=\"xl/workbook.xml\"/>"
                 + "</Relationships>";
-        String workbook = "<?xml version=\\"1.0\\" encoding=\\"UTF-8\\" standalone=\\"yes\\"?>"
-                + "<workbook xmlns=\\"http://schemas.openxmlformats.org/spreadsheetml/2006/main\\" xmlns:r=\\"http://schemas.openxmlformats.org/officeDocument/2006/relationships\\">"
-                + "<sheets><sheet name=\\"MyOffice\\" sheetId=\\"1\\" r:id=\\"rId1\\"/></sheets></workbook>";
-        String workbookRelationships = "<?xml version=\\"1.0\\" encoding=\\"UTF-8\\" standalone=\\"yes\\"?>"
-                + "<Relationships xmlns=\\"http://schemas.openxmlformats.org/package/2006/relationships\\">"
-                + "<Relationship Id=\\"rId1\\" Type=\\"http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet\\" Target=\\"worksheets/sheet1.xml\\"/>"
+        String workbook = "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>"
+                + "<workbook xmlns=\"http://schemas.openxmlformats.org/spreadsheetml/2006/main\" xmlns:r=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships\">"
+                + "<sheets><sheet name=\"MyOffice\" sheetId=\"1\" r:id=\"rId1\"/></sheets></workbook>";
+        String workbookRelationships = "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>"
+                + "<Relationships xmlns=\"http://schemas.openxmlformats.org/package/2006/relationships\">"
+                + "<Relationship Id=\"rId1\" Type=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet\" Target=\"worksheets/sheet1.xml\"/>"
                 + "</Relationships>";
-        StringBuilder sheet = new StringBuilder("<?xml version=\\"1.0\\" encoding=\\"UTF-8\\" standalone=\\"yes\\"?>")
-                .append("<worksheet xmlns=\\"http://schemas.openxmlformats.org/spreadsheetml/2006/main\\"><sheetData>");
+        StringBuilder sheet = new StringBuilder("<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>")
+                .append("<worksheet xmlns=\"http://schemas.openxmlformats.org/spreadsheetml/2006/main\"><sheetData>");
         for (int r = 0; r < rows.size(); r++) {
-            sheet.append("<row r=\\"").append(r + 1).append("\\">");
+            sheet.append("<row r=\"").append(r + 1).append("\">");
             ArrayList<String> row = rows.get(r);
             for (int col = 0; col < row.size(); col++) {
                 String value = row.get(col) == null ? "" : row.get(col);
                 String reference = xlsxColumnName(col) + (r + 1);
                 if (value.matches("-?(?:0|[1-9][0-9]*)(?:\\.[0-9]+)?(?:[Ee][+-]?[0-9]+)?")
                         && !value.isEmpty()) {
-                    sheet.append("<c r=\\"").append(reference).append("\\"><v>")
+                    sheet.append("<c r=\"").append(reference).append("\"><v>")
                             .append(value).append("</v></c>");
                 } else {
-                    sheet.append("<c r=\\"").append(reference).append("\\" t=\\"inlineStr\\"><is><t xml:space=\\"preserve\\">")
+                    sheet.append("<c r=\"").append(reference).append("\" t=\"inlineStr\"><is><t xml:space=\"preserve\">")
                             .append(xmlEscape(value)).append("</t></is></c>");
                 }
             }
