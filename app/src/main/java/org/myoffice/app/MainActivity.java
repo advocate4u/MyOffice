@@ -439,6 +439,28 @@ public final class MainActivity extends Activity {
             }
             return;
         }
+        if (request == SAVE_PNG) {
+            File temp = pendingPngFile;
+            pendingPngFile = null;
+            if (result != RESULT_OK || data == null || data.getData() == null || temp == null) {
+                if (temp != null) temp.delete();
+                return;
+            }
+            try (InputStream in = new FileInputStream(temp);
+                 java.io.OutputStream out = getContentResolver().openOutputStream(data.getData(), "wt")) {
+                if (out == null) throw new IllegalStateException("Destination cannot be written");
+                byte[] buffer = new byte[8192];
+                int count;
+                while ((count = in.read(buffer)) != -1) out.write(buffer, 0, count);
+                out.flush();
+                temp.delete();
+                Toast.makeText(this, "PDF page exported as PNG.", Toast.LENGTH_SHORT).show();
+            } catch (Exception e) {
+                temp.delete();
+                Toast.makeText(this, "Could not save the PNG image.", Toast.LENGTH_LONG).show();
+            }
+            return;
+        }
         if (request == SAVE_XLSX) {
             File temp = pendingXlsxFile;
             pendingXlsxFile = null;
@@ -2083,6 +2105,73 @@ public final class MainActivity extends Activity {
         }
     }
 
+    // Export only the currently selected PDF page as a PNG image, honoring viewer rotation.
+    // Rendering is local and performed off the UI thread.
+    private void exportPdfPageAsPng(Uri source, String sourceName, int pageIndex, int rotationDegrees) {
+        Toast.makeText(this, "Preparing page image on this device…", Toast.LENGTH_SHORT).show();
+        new Thread(() -> {
+            File temp = null;
+            try (ParcelFileDescriptor descriptor = getContentResolver().openFileDescriptor(source, "r")) {
+                if (descriptor == null) throw new IllegalStateException("PDF source is unavailable");
+                PdfRenderer renderer = new PdfRenderer(descriptor);
+                try {
+                    if (pageIndex < 0 || pageIndex >= renderer.getPageCount()) {
+                        throw new IllegalArgumentException("Page is outside this PDF");
+                    }
+                    try (PdfRenderer.Page page = renderer.openPage(pageIndex)) {
+                        float scale = Math.min(2.0f, Math.min(1800f / page.getWidth(), 1800f / page.getHeight()));
+                        int width = Math.max(1, Math.round(page.getWidth() * scale));
+                        int height = Math.max(1, Math.round(page.getHeight() * scale));
+                        Bitmap rendered = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888);
+                        rendered.eraseColor(0xFFFFFFFF);
+                        page.render(rendered, null, null, PdfRenderer.Page.RENDER_MODE_FOR_DISPLAY);
+                        Bitmap output = rendered;
+                        int normalizedRotation = ((rotationDegrees % 360) + 360) % 360;
+                        if (normalizedRotation != 0) {
+                            Matrix matrix = new Matrix();
+                            matrix.postRotate(normalizedRotation);
+                            output = Bitmap.createBitmap(rendered, 0, 0, rendered.getWidth(), rendered.getHeight(), matrix, true);
+                            if (output != rendered) rendered.recycle();
+                        }
+                        temp = File.createTempFile("myoffice_page_", ".png", getCacheDir());
+                        try (FileOutputStream stream = new FileOutputStream(temp)) {
+                            if (!output.compress(Bitmap.CompressFormat.PNG, 100, stream)) {
+                                throw new IllegalStateException("PNG encoding failed");
+                            }
+                            stream.flush();
+                        } finally {
+                            output.recycle();
+                        }
+                    }
+                } finally {
+                    renderer.close();
+                }
+                File ready = temp;
+                runOnUiThread(() -> {
+                    if (isFinishing()) { ready.delete(); return; }
+                    pendingPngFile = ready;
+                    String base = sourceName.toLowerCase(Locale.ROOT).endsWith(".pdf")
+                            ? sourceName.substring(0, sourceName.length() - 4) : sourceName;
+                    Intent create = new Intent(Intent.ACTION_CREATE_DOCUMENT);
+                    create.addCategory(Intent.CATEGORY_OPENABLE);
+                    create.setType("image/png");
+                    create.putExtra(Intent.EXTRA_TITLE, safeTextFilename(base) + "_page_" + (pageIndex + 1) + ".png");
+                    try { startActivityForResult(create, SAVE_PNG); }
+                    catch (Exception e) {
+                        pendingPngFile = null;
+                        ready.delete();
+                        Toast.makeText(this, "Could not open the Save image picker.", Toast.LENGTH_LONG).show();
+                    }
+                });
+            } catch (Exception e) {
+                if (temp != null) temp.delete();
+                runOnUiThread(() -> Toast.makeText(this,
+                        "Could not export this PDF page. Check that the page is readable and try again.",
+                        Toast.LENGTH_LONG).show());
+            }
+        }, "MyOffice-PDF-page-PNG").start();
+    }
+
     // Exports a rasterized copy so the chosen viewing rotation is baked into every page.
     // The source PDF is never modified; text selection/search in the output is not preserved.
     private void exportEditedPdfCopy(Uri source, String name, int rotationDegrees, String watermarkText) {
@@ -2348,6 +2437,7 @@ public final class MainActivity extends Activity {
             Toast.makeText(this, "PDF view reset to 0°.", Toast.LENGTH_SHORT).show();
         }));
         content.addView(action("Export rotated PDF copy", v -> exportEditedPdfCopy(uri, name, currentPdfRotationDegrees, "")));
+        content.addView(action("Export current page as PNG", v -> exportPdfPageAsPng(uri, name, pageIndex[0], currentPdfRotationDegrees)));
         content.addView(action("Extract pages to new PDF", v -> {
             LinearLayout rangeFields = new LinearLayout(this);
             rangeFields.setOrientation(LinearLayout.VERTICAL);
