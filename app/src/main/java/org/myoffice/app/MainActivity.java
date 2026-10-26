@@ -110,10 +110,12 @@ public final class MainActivity extends Activity {
     private final ArrayList<String> recentUris = new ArrayList<>();
     private final ArrayList<String> favoriteUris = new ArrayList<>();
     private final ArrayList<String> selectedRecentUris = new ArrayList<>();
+    private final ArrayList<String> visibleRecentUris = new ArrayList<>();
     private boolean favoritesOnly = false;
     private boolean recentSelectionMode = false;
     private Button recentSelectionButton;
     private Button shareSelectedButton;
+    private Button selectVisibleButton;
     private ArrayList<ArrayList<EditText>> sheetCells = new ArrayList<>();
     private File currentCsvFile;
     private String sheetOriginalSnapshot = "";
@@ -229,9 +231,36 @@ public final class MainActivity extends Activity {
             if (!recentSelectionMode) selectedRecentUris.clear();
             recentSelectionButton.setText(recentSelectionMode ? "Cancel selection" : "Select files");
             updateShareSelectedButton();
+            updateSelectVisibleButton();
             renderRecents();
         });
         page.addView(recentSelectionButton);
+        selectVisibleButton = action("Select visible", v -> {
+            if (!recentSelectionMode) {
+                recentSelectionMode = true;
+                recentSelectionButton.setText("Cancel selection");
+                renderRecents();
+            }
+            boolean allVisibleSelected = !visibleRecentUris.isEmpty();
+            for (String value : visibleRecentUris) {
+                if (!selectedRecentUris.contains(value)) {
+                    allVisibleSelected = false;
+                    break;
+                }
+            }
+            if (allVisibleSelected) {
+                selectedRecentUris.removeAll(visibleRecentUris);
+            } else {
+                for (String value : visibleRecentUris) {
+                    if (!selectedRecentUris.contains(value)) selectedRecentUris.add(value);
+                }
+            }
+            updateShareSelectedButton();
+            updateSelectVisibleButton();
+            renderRecents();
+        });
+        selectVisibleButton.setEnabled(false);
+        page.addView(selectVisibleButton);
         shareSelectedButton = action("Share selected (0)", v -> shareSelectedRecentFiles());
         shareSelectedButton.setEnabled(false);
         page.addView(shareSelectedButton);
@@ -2696,8 +2725,10 @@ public final class MainActivity extends Activity {
     private void renderRecents() {
         if (recentList == null) return;
         recentList.removeAllViews();
+        visibleRecentUris.clear();
         if (recentUris.isEmpty()) {
             recentList.addView(label("No recent files yet. Tap Open a file to get started.", 14, false));
+            updateSelectVisibleButton();
             return;
         }
         String query = recentSearchInput == null ? "" : recentSearchInput.getText().toString().trim().toLowerCase(Locale.ROOT);
@@ -2724,6 +2755,7 @@ public final class MainActivity extends Activity {
             if (!query.isEmpty() && !name.toLowerCase(Locale.ROOT).contains(query)) continue;
             if (!matchesRecentFilter(name, mime)) continue;
             if (favoritesOnly && !favoriteUris.contains(value)) continue;
+            visibleRecentUris.add(value);
             shown++;
             if (mime == null) mime = "Unknown file type";
             LinearLayout card = new LinearLayout(this);
@@ -2781,6 +2813,20 @@ public final class MainActivity extends Activity {
             card.setOnClickListener(v -> openSelected(Uri.parse(value)));
         }
         if (shown == 0) recentList.addView(label("No recent files match the current search and filter.", 14, false));
+        updateSelectVisibleButton();
+    }
+
+    private void updateSelectVisibleButton() {
+        if (selectVisibleButton == null) return;
+        boolean allVisibleSelected = !visibleRecentUris.isEmpty();
+        for (String value : visibleRecentUris) {
+            if (!selectedRecentUris.contains(value)) {
+                allVisibleSelected = false;
+                break;
+            }
+        }
+        selectVisibleButton.setText(allVisibleSelected ? "Deselect visible" : "Select visible");
+        selectVisibleButton.setEnabled(recentSelectionMode && !visibleRecentUris.isEmpty());
     }
 
     private void updateShareSelectedButton() {
