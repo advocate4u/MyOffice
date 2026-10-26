@@ -34,10 +34,12 @@ import android.widget.TextView;
 import android.widget.Toast;
 import android.text.Editable;
 import android.text.Html;
+import android.text.Layout;
 import android.text.Spanned;
 import android.text.TextWatcher;
 import android.text.SpannableString;
 import android.text.SpannableStringBuilder;
+import android.text.style.AlignmentSpan;
 import android.text.style.BackgroundColorSpan;
 import android.text.style.ForegroundColorSpan;
 import android.text.style.StyleSpan;
@@ -624,10 +626,17 @@ public final class MainActivity extends Activity {
             int newline = plain.indexOf('\n', start);
             int end = newline < 0 ? plain.length() : newline;
             document.append("<w:p>");
+            AlignmentSpan.Standard[] paragraphAlignments = richText.getSpans(start, Math.min(plain.length(), Math.max(start + 1, end + 1)), AlignmentSpan.Standard.class);
+            Layout.Alignment paragraphAlignment = paragraphAlignments.length > 0
+                    ? paragraphAlignments[0].getAlignment() : null;
             int horizontal = alignmentGravity & Gravity.HORIZONTAL_GRAVITY_MASK;
-            if (horizontal == Gravity.CENTER_HORIZONTAL) document.append("<w:pPr><w:jc w:val=\"center\"/></w:pPr>");
-            else if (horizontal == Gravity.RIGHT) document.append("<w:pPr><w:jc w:val=\"right\"/></w:pPr>");
-            else if (horizontal == Gravity.FILL_HORIZONTAL) document.append("<w:pPr><w:jc w:val=\"both\"/></w:pPr>");
+            if (paragraphAlignment == Layout.Alignment.ALIGN_CENTER || (paragraphAlignment == null && horizontal == Gravity.CENTER_HORIZONTAL)) {
+                document.append("<w:pPr><w:jc w:val=\"center\"/></w:pPr>");
+            } else if (paragraphAlignment == Layout.Alignment.ALIGN_OPPOSITE || (paragraphAlignment == null && horizontal == Gravity.RIGHT)) {
+                document.append("<w:pPr><w:jc w:val=\"right\"/></w:pPr>");
+            } else if (paragraphAlignment == Layout.Alignment.ALIGN_NORMAL && horizontal == Gravity.FILL_HORIZONTAL) {
+                document.append("<w:pPr><w:jc w:val=\"both\"/></w:pPr>");
+            }
             appendFormattedDocxParagraph(document, richText, start, end);
             document.append("</w:p>");
             if (newline < 0) break;
@@ -890,10 +899,39 @@ public final class MainActivity extends Activity {
         NodeList paragraphs = document.getElementsByTagNameNS(wordNamespace, "p");
         SpannableStringBuilder richText = new SpannableStringBuilder();
         for (int i = 0; i < paragraphs.getLength(); i++) {
-            appendWordRichNode(paragraphs.item(i), richText);
+            Node paragraph = paragraphs.item(i);
+            int paragraphStart = richText.length();
+            appendWordRichNode(paragraph, richText);
+            int paragraphEnd = richText.length();
+            String alignment = wordParagraphAlignment(paragraph);
+            Layout.Alignment layout = "center".equals(alignment) ? Layout.Alignment.ALIGN_CENTER
+                    : ("right".equals(alignment) || "end".equals(alignment)) ? Layout.Alignment.ALIGN_OPPOSITE
+                    : "both".equals(alignment) || "distribute".equals(alignment) ? Layout.Alignment.ALIGN_NORMAL
+                    : Layout.Alignment.ALIGN_NORMAL;
+            if (paragraphEnd > paragraphStart && !"left".equals(alignment) && !"start".equals(alignment)) {
+                richText.setSpan(new AlignmentSpan.Standard(layout), paragraphStart, paragraphEnd,
+                        Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+            }
             if (i < paragraphs.getLength() - 1) richText.append('\n');
         }
         return richText;
+    }
+
+    private String wordParagraphAlignment(Node paragraph) {
+        Node child = paragraph.getFirstChild();
+        while (child != null) {
+            if (child.getNodeType() == Node.ELEMENT_NODE && "pPr".equals(child.getLocalName())) {
+                Node property = child.getFirstChild();
+                while (property != null) {
+                    if (property.getNodeType() == Node.ELEMENT_NODE && "jc".equals(property.getLocalName())) {
+                        return wordAttribute(property, "val").toLowerCase(Locale.ROOT);
+                    }
+                    property = property.getNextSibling();
+                }
+            }
+            child = child.getNextSibling();
+        }
+        return "left";
     }
 
     private void appendWordRichNode(Node node, SpannableStringBuilder out) {
