@@ -1699,10 +1699,16 @@ public final class MainActivity extends Activity {
 
     private void exportEditedPdfCopy(Uri source, String name, int rotationDegrees, String watermarkText,
                                      int requestedStartPage, int requestedEndPage) {
-        Toast.makeText(this, requestedStartPage != 1 || requestedEndPage != Integer.MAX_VALUE
-                ? "Preparing extracted PDF pages…" 
-                : (watermarkText == null || watermarkText.trim().isEmpty() ? "Preparing rotated PDF copy…" : "Preparing stamped PDF copy…"),
-                Toast.LENGTH_SHORT).show();
+        exportEditedPdfCopy(source, name, rotationDegrees, watermarkText, requestedStartPage, requestedEndPage, -1);
+    }
+
+    private void exportEditedPdfCopy(Uri source, String name, int rotationDegrees, String watermarkText,
+                                     int requestedStartPage, int requestedEndPage, int annotationPageIndex) {
+        String preparationMessage = annotationPageIndex >= 0 ? "Preparing annotated PDF copy…"
+                : (requestedStartPage != 1 || requestedEndPage != Integer.MAX_VALUE
+                    ? "Preparing extracted PDF pages…"
+                    : (watermarkText == null || watermarkText.trim().isEmpty() ? "Preparing rotated PDF copy…" : "Preparing stamped PDF copy…"));
+        Toast.makeText(this, preparationMessage, Toast.LENGTH_SHORT).show();
         new Thread(() -> {
             File temp = null;
             try (ParcelFileDescriptor descriptor = getContentResolver().openFileDescriptor(source, "r")) {
@@ -1737,7 +1743,7 @@ public final class MainActivity extends Activity {
                                 PdfDocument.Page outputPage = output.startPage(
                                         new PdfDocument.PageInfo.Builder(bitmap.getWidth(), bitmap.getHeight(), i - firstPageIndex + 1).create());
                                 outputPage.getCanvas().drawBitmap(bitmap, 0f, 0f, null);
-                                if (watermarkText != null && !watermarkText.trim().isEmpty()) {
+                                if (watermarkText != null && !watermarkText.trim().isEmpty() && (annotationPageIndex < 0 || i == annotationPageIndex)) {
                                     Paint stampPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
                                     stampPaint.setColor(0x99D32F2F);
                                     stampPaint.setTextSize(Math.max(26f, bitmap.getWidth() * 0.045f));
@@ -1769,7 +1775,8 @@ public final class MainActivity extends Activity {
                     String base = name.toLowerCase(Locale.ROOT).endsWith(".pdf")
                             ? name.substring(0, name.length() - 4) : name;
                     String suggestedSuffix;
-                    if (watermarkText != null && !watermarkText.trim().isEmpty()) suggestedSuffix = "_stamped.pdf";
+                    if (annotationPageIndex >= 0) suggestedSuffix = "_annotated.pdf";
+                    else if (watermarkText != null && !watermarkText.trim().isEmpty()) suggestedSuffix = "_stamped.pdf";
                     else if (firstPageForName(requestedStartPage, requestedEndPage)) suggestedSuffix = "_rotated.pdf";
                     else suggestedSuffix = "_pages_" + requestedStartPage + "-" + requestedEndPage + ".pdf";
                     create.putExtra(Intent.EXTRA_TITLE, base + suggestedSuffix);
@@ -1921,6 +1928,26 @@ public final class MainActivity extends Activity {
                             return;
                         }
                         exportEditedPdfCopy(uri, name, currentPdfRotationDegrees, stamp);
+                    }).show();
+        }));
+        content.addView(action("Add text to current page", v -> {
+            EditText annotationInput = new EditText(this);
+            annotationInput.setSingleLine(false);
+            annotationInput.setMinLines(2);
+            annotationInput.setHint("e.g. Reviewed on 26 Oct 2026");
+            new AlertDialog.Builder(this)
+                    .setTitle("Annotate page " + (pageIndex[0] + 1))
+                    .setMessage("Text is permanently drawn onto a new flattened PDF copy. The original stays unchanged.")
+                    .setView(annotationInput)
+                    .setNegativeButton("Cancel", (dialog, which) -> dialog.dismiss())
+                    .setPositiveButton("Export annotated copy", (dialog, which) -> {
+                        String annotation = annotationInput.getText().toString().trim();
+                        if (annotation.isEmpty()) {
+                            Toast.makeText(this, "Enter annotation text first.", Toast.LENGTH_SHORT).show();
+                            return;
+                        }
+                        exportEditedPdfCopy(uri, name, currentPdfRotationDegrees, annotation,
+                                1, Integer.MAX_VALUE, pageIndex[0]);
                     }).show();
         }));
         LinearLayout navigation = new LinearLayout(this);
