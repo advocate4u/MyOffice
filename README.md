@@ -22,8 +22,8 @@ An original Android office and learning app focused on free, offline-first use, 
 - Basic PDF reader (feature F3): render local PDF pages with Android PdfRenderer and navigate previous/next pages; rendering stays on-device and unsupported/encrypted files show an error.
 - PDF rotated-copy export (feature F62): export a new PDF with the selected 0°/90°/180°/270° viewer rotation baked into every page; rendering runs off the UI thread and leaves the source untouched. This rasterized output may lose searchable/selectable text and is limited to 500 pages.
 - PDF watermark/stamp export (feature F63): add user-supplied text such as DRAFT, COPY or APPROVED to every page of a new flattened PDF copy, while preserving the chosen viewer rotation and leaving the original untouched.
-- PDF page-range extraction (feature F67): create a new flattened PDF from an inclusive user-selected page range, optionally applying the current viewer rotation, while preserving the original source.
-- PDF merge (feature F68): combine the currently opened PDF with additional selected local PDFs into a new flattened PDF, rendered offline on a background thread; originals remain unchanged and merged output is limited to 500 pages.
+- PDF page-range extraction (feature F69): create a new flattened PDF from an inclusive user-selected page range, optionally applying the current viewer rotation, while preserving the original source.
+- PDF merge (feature F70): combine the currently opened PDF with additional selected local PDFs into a new flattened PDF, rendered offline on a background thread; originals remain unchanged and merged output is limited to 500 pages.
 - Writer first milestone (feature F4): create, edit, save and reopen local UTF-8 plain-text documents; share text through Android's chooser; unsaved-change confirmation.
 - Writer rich formatting (feature F57): apply bold, italic, underline, strikethrough, relative font size, red/blue text, yellow highlight, and left/center/right editor alignment. Formatted copies persist as HTML and can be reopened offline; existing TXT files remain supported.
 - Writer rich-format save safety (feature F60): detect formatting spans when saving or leaving Writer, persist formatted content as HTML instead of silently flattening it to plain text, and compare the editor's actual initial text when checking for unsaved changes.
@@ -161,8 +161,8 @@ The uploaded APK has not yet been run through REA/JADX in this environment becau
 - [F65 DOCX basic-format import test plan](docs/testing/F65-docx-basic-format-import-test-plan.md)
 - [F67 DOCX paragraph alignment test plan](docs/testing/F67-docx-paragraph-alignment-test-plan.md)
 - [F68 XLSX export test plan](docs/testing/F68-xlsx-export-test-plan.md)
-- [F67 PDF page-range extraction test plan](docs/testing/F67-pdf-page-range-extraction-test-plan.md)
-- [F68 PDF merge test plan](docs/testing/F68-pdf-merge-test-plan.md)
+- [F69 PDF page-range extraction test plan](docs/testing/F69-pdf-page-range-extraction-test-plan.md)
+- [F70 PDF merge test plan](docs/testing/F70-pdf-merge-test-plan.md)
 - [F14 Text import test plan](docs/testing/F14-text-import-test-plan.md)
 - [F15 Find-in-text test plan](docs/testing/F15-find-in-text-test-plan.md)
 - [F16 Formula preview test plan](docs/testing/F16-formula-preview-test-plan.md)
