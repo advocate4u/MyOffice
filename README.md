@@ -78,6 +78,7 @@ An original Android office and learning app focused on free, offline-first use, 
 - Slideshow (feature F17): present text-only slide decks in a read-only slide view with previous/next navigation.
 - DOCX text import (feature F18): extract paragraph text from a local DOCX package into a new Writer copy; original is unchanged and formatting/images are not preserved.
 - DOCX export (feature F19): export Writer plain text as a minimal WordprocessingML DOCX package through Android's Save document picker.
+- DOCX formatted export (feature F64): export Writer rich-text runs with bold, italic, underline, strikethrough, text color, highlight and relative font size, plus the current left/center/right paragraph alignment. This is a focused compatibility subset, not full Word fidelity.
 - Arithmetic formula preview (feature F20): preview `=A1+B1`, subtraction, multiplication and division using numeric cell references, alongside the aggregate formulas from F16.
 - No login or network permission is required for these core features.
 - Advanced Word compatibility (preserving DOCX formatting, tables and images), XLSX/PPTX import/export, slide themes/images/animations, camera scanning/OCR, PDF text search/native annotations and other advanced office functionality are still in development.
@@ -150,6 +151,7 @@ The uploaded APK has not yet been run through REA/JADX in this environment becau
 - [F59 Select visible recent files test plan](docs/testing/F59-select-visible-recent-files-test-plan.md)
 - [F62 PDF rotated-copy export test plan](docs/testing/F62-pdf-rotated-copy-export-test-plan.md)
 - [F63 PDF watermark/stamp test plan](docs/testing/F63-pdf-watermark-stamp-test-plan.md)
+- [F64 DOCX formatted export test plan](docs/testing/F64-docx-formatted-export-test-plan.md)
 - [F14 Text import test plan](docs/testing/F14-text-import-test-plan.md)
 - [F15 Find-in-text test plan](docs/testing/F15-find-in-text-test-plan.md)
 - [F16 Formula preview test plan](docs/testing/F16-formula-preview-test-plan.md)
