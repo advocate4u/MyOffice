@@ -183,6 +183,8 @@ The uploaded APK has not yet been run through REA/JADX in this environment becau
 - [F19 DOCX export test plan](docs/testing/F19-docx-export-test-plan.md)
 - [F20 Arithmetic formula test plan](docs/testing/F20-arithmetic-formula-test-plan.md)
 
+- PDF text note overlay (feature F57): add a readable multi-line note on the current page when exporting a new flattened PDF copy; original PDF remains unchanged.
+
 ## Current status
 
 F0/F1 file hub prototype, F2 offline notes, F3 basic PDF reader, F4 plain-text Writer, F5 CSV spreadsheet grid, F6 text-only presentations, F7 image-to-PDF conversion, F8 text export and F9 CSV import are in source. F2–F50 features are implemented to varying prototype levels. F51 adds optional MyAdv-key release signing and F52 documents Back navigation. A signed release APK is created only when the same signing secrets are configured for this repository. Each feature requires successful CI and device acceptance tests before it can be considered verified. Device acceptance tests remain pending until the APK is installed and tested on Android. Work proceeds one feature at a time, with a build after each feature.
