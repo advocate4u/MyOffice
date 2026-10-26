@@ -46,6 +46,8 @@ public final class MainActivity extends Activity {
     private static final int PICK_IMAGES = 4102;
     private static final int SAVE_PDF = 4103;
     private static final int SAVE_TEXT = 4104;
+    private static final int SAVE_CSV = 4105;
+    private String pendingCsvExport;
     private String pendingTextExport;
     private File pendingPdfFile;
     private static final String PREFS = "myoffice_recent";
@@ -175,6 +177,20 @@ public final class MainActivity extends Activity {
             createPdfFromImagesAsync(images);
             return;
         }
+        if (request == SAVE_CSV) {
+            String export = pendingCsvExport;
+            pendingCsvExport = null;
+            if (result != RESULT_OK || data == null || data.getData() == null || export == null) return;
+            try (OutputStreamWriter writer = new OutputStreamWriter(
+                    getContentResolver().openOutputStream(data.getData(), "wt"), "UTF-8")) {
+                writer.write(export);
+                writer.flush();
+                Toast.makeText(this, "CSV exported.", Toast.LENGTH_SHORT).show();
+            } catch (Exception e) {
+                Toast.makeText(this, "Could not export CSV.", Toast.LENGTH_LONG).show();
+            }
+            return;
+        }
         if (request == SAVE_TEXT) {
             String export = pendingTextExport;
             pendingTextExport = null;
@@ -230,6 +246,19 @@ public final class MainActivity extends Activity {
     }
 
 
+
+    private void startCsvExport(String suggestedName, String content) {
+        pendingCsvExport = content;
+        Intent intent = new Intent(Intent.ACTION_CREATE_DOCUMENT);
+        intent.addCategory(Intent.CATEGORY_OPENABLE);
+        intent.setType("text/csv");
+        intent.putExtra(Intent.EXTRA_TITLE, suggestedName.endsWith(".csv") ? suggestedName : suggestedName + ".csv");
+        try { startActivityForResult(intent, SAVE_CSV); }
+        catch (Exception e) {
+            pendingCsvExport = null;
+            Toast.makeText(this, "Could not open the Save CSV picker.", Toast.LENGTH_LONG).show();
+        }
+    }
 
     private String safeTextFilename(String value) {
         StringBuilder safe = new StringBuilder();
@@ -1039,6 +1068,10 @@ public final class MainActivity extends Activity {
         HorizontalScrollView horizontal = new HorizontalScrollView(this);
         horizontal.addView(grid);
         content.addView(horizontal, new LinearLayout.LayoutParams(-1, -2));
+        content.addView(action("Export CSV copy", v -> {
+            String filename = currentCsvFile == null ? "MyOffice_Sheet.csv" : currentCsvFile.getName();
+            startCsvExport(filename, serializeSheet(readSheetCells()));
+        }));
         content.addView(action("Save CSV sheet", v -> saveSpreadsheet()));
         content.addView(action("Discard changes", v -> new AlertDialog.Builder(this)
                 .setTitle("Discard this sheet edit?")
