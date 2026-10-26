@@ -4,14 +4,18 @@ import android.app.Activity;
 import android.app.AlertDialog;
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.graphics.Bitmap;
+import android.graphics.pdf.PdfRenderer;
 import android.database.Cursor;
 import android.net.Uri;
 import android.os.Bundle;
+import android.os.ParcelFileDescriptor;
 import android.provider.OpenableColumns;
 import android.view.Gravity;
 import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
+import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.ScrollView;
 import android.widget.TextView;
@@ -176,6 +180,10 @@ public final class MainActivity extends Activity {
         String mime = getContentResolver().getType(uri);
         if (mime == null) mime = "Unknown file type";
         String lower = name.toLowerCase(Locale.ROOT);
+        if (mime.equals("application/pdf") || lower.endsWith(".pdf")) {
+            showPdf(uri, name);
+            return;
+        }
         boolean textFile = mime.startsWith("text/") || mime.equals("application/json")
                 || lower.endsWith(".txt") || lower.endsWith(".md") || lower.endsWith(".csv")
                 || lower.endsWith(".log") || lower.endsWith(".json") || lower.endsWith(".xml");
@@ -394,6 +402,84 @@ public final class MainActivity extends Activity {
         ScrollView scroll = new ScrollView(this);
         scroll.addView(content);
         setContentView(scroll);
+    }
+
+
+    // Basic local PDF reader using Android's built-in PdfRenderer. It does not upload the document.
+    private void showPdf(Uri uri, String name) {
+        LinearLayout content = column();
+        TextView back = label("‹  Back to MyOffice", 16, true);
+        back.setOnClickListener(v -> showHome());
+        content.addView(back);
+        content.addView(label(name, 20, true));
+        TextView pageLabel = label("Opening PDF…", 13, false);
+        content.addView(pageLabel);
+        ImageView pageImage = new ImageView(this);
+        pageImage.setAdjustViewBounds(true);
+        pageImage.setScaleType(ImageView.ScaleType.FIT_CENTER);
+        pageImage.setBackgroundColor(0xFFFFFFFF);
+        LinearLayout.LayoutParams imageParams = new LinearLayout.LayoutParams(-1, dp(520));
+        content.addView(pageImage, imageParams);
+        int[] pageIndex = new int[]{0};
+        LinearLayout navigation = new LinearLayout(this);
+        navigation.setOrientation(LinearLayout.HORIZONTAL);
+        Button previous = action("Previous page", v -> {
+            if (pageIndex[0] > 0) {
+                pageIndex[0]--;
+                renderPdfPage(uri, pageIndex[0], pageImage, pageLabel, previousRef[0], nextRef[0], pageIndex);
+            }
+        });
+        Button next = action("Next page", v -> {
+            pageIndex[0]++;
+            renderPdfPage(uri, pageIndex[0], pageImage, pageLabel, previousRef[0], nextRef[0], pageIndex);
+        });
+        previousRef[0] = previous;
+        nextRef[0] = next;
+        navigation.addView(previous, new LinearLayout.LayoutParams(0, -2, 1));
+        navigation.addView(next, new LinearLayout.LayoutParams(0, -2, 1));
+        content.addView(navigation);
+        content.addView(label("Local PDF preview. Editing, OCR and conversion are not included in this reader yet.", 12, false));
+        ScrollView scroll = new ScrollView(this);
+        scroll.addView(content);
+        setContentView(scroll);
+        renderPdfPage(uri, 0, pageImage, pageLabel, previous, next, pageIndex);
+    }
+
+    private final Button[] previousRef = new Button[1];
+    private final Button[] nextRef = new Button[1];
+
+    private void renderPdfPage(Uri uri, int requestedPage, ImageView image, TextView pageLabel,
+                               Button previous, Button next, int[] pageIndex) {
+        try (ParcelFileDescriptor descriptor = getContentResolver().openFileDescriptor(uri, "r")) {
+            if (descriptor == null) throw new IllegalStateException("PDF source is unavailable");
+            try (PdfRenderer renderer = new PdfRenderer(descriptor)) {
+                int pageCount = renderer.getPageCount();
+                if (pageCount <= 0) throw new IllegalStateException("This PDF has no pages");
+                int index = Math.max(0, Math.min(requestedPage, pageCount - 1));
+                try (PdfRenderer.Page page = renderer.openPage(index)) {
+                    float scale = Math.min(2.0f, Math.min(1400f / page.getWidth(), 1800f / page.getHeight()));
+                    int width = Math.max(1, Math.round(page.getWidth() * scale));
+                    int height = Math.max(1, Math.round(page.getHeight() * scale));
+                    Bitmap bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888);
+                    page.render(bitmap, null, null, PdfRenderer.Page.RENDER_MODE_FOR_DISPLAY);
+                    Object old = image.getTag();
+                    if (old instanceof Bitmap && old != bitmap && !((Bitmap) old).isRecycled()) {
+                        ((Bitmap) old).recycle();
+                    }
+                    image.setImageBitmap(bitmap);
+                    image.setTag(bitmap);
+                    pageIndex[0] = index;
+                    pageLabel.setText("Page " + (index + 1) + " of " + pageCount);
+                    previous.setEnabled(index > 0);
+                    next.setEnabled(index < pageCount - 1);
+                }
+            }
+        } catch (Exception e) {
+            pageLabel.setText("Could not render this PDF. It may be encrypted, damaged, or unsupported.");
+            previous.setEnabled(false);
+            next.setEnabled(false);
+            Toast.makeText(this, "PDF preview is unavailable for this file.", Toast.LENGTH_LONG).show();
+        }
     }
 
     private void renderRecents() {
