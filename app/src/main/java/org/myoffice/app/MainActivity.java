@@ -973,6 +973,14 @@ public final class MainActivity extends Activity {
             }
         }), new LinearLayout.LayoutParams(0, -2, 1));
         content.addView(pageJump);
+        LinearLayout bookmarkControls = new LinearLayout(this);
+        bookmarkControls.setOrientation(LinearLayout.HORIZONTAL);
+        bookmarkControls.addView(action("Bookmark current page", v -> togglePdfBookmark(uri, pageIndex[0])),
+                new LinearLayout.LayoutParams(0, -2, 1));
+        bookmarkControls.addView(action("Bookmarks", v -> showPdfBookmarks(uri, pageImage, pageLabel, pageInput,
+                previousRef[0], nextRef[0], pageIndex, zoomLevel)),
+                new LinearLayout.LayoutParams(0, -2, 1));
+        content.addView(bookmarkControls);
         TextView zoomLabel = label("Zoom 100%", 12, false);
         LinearLayout zoomControls = new LinearLayout(this);
         zoomControls.setOrientation(LinearLayout.HORIZONTAL);
@@ -1028,6 +1036,63 @@ public final class MainActivity extends Activity {
 
     private final Button[] previousRef = new Button[1];
     private final Button[] nextRef = new Button[1];
+
+    private ArrayList<Integer> readPdfBookmarks(Uri uri) {
+        String stored = getSharedPreferences("myoffice_pdf_bookmarks", MODE_PRIVATE)
+                .getString(uri.toString(), "");
+        ArrayList<Integer> pages = new ArrayList<>();
+        if (!stored.isEmpty()) {
+            for (String value : stored.split(",")) {
+                try {
+                    int page = Integer.parseInt(value);
+                    if (page >= 0 && !pages.contains(page)) pages.add(page);
+                } catch (NumberFormatException ignored) { }
+            }
+        }
+        Collections.sort(pages);
+        return pages;
+    }
+
+    private void savePdfBookmarks(Uri uri, ArrayList<Integer> pages) {
+        StringBuilder stored = new StringBuilder();
+        for (int page : pages) {
+            if (stored.length() > 0) stored.append(',');
+            stored.append(page);
+        }
+        getSharedPreferences("myoffice_pdf_bookmarks", MODE_PRIVATE)
+                .edit().putString(uri.toString(), stored.toString()).apply();
+    }
+
+    private void togglePdfBookmark(Uri uri, int pageIndex) {
+        ArrayList<Integer> pages = readPdfBookmarks(uri);
+        if (pages.contains(pageIndex)) {
+            pages.remove(Integer.valueOf(pageIndex));
+            savePdfBookmarks(uri, pages);
+            Toast.makeText(this, "Bookmark removed for page " + (pageIndex + 1) + ".", Toast.LENGTH_SHORT).show();
+        } else {
+            pages.add(pageIndex);
+            Collections.sort(pages);
+            savePdfBookmarks(uri, pages);
+            Toast.makeText(this, "Bookmarked page " + (pageIndex + 1) + ".", Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    private void showPdfBookmarks(Uri uri, ImageView image, TextView pageLabel, EditText pageInput,
+                                  Button previous, Button next, int[] pageIndex, float[] zoomLevel) {
+        ArrayList<Integer> pages = readPdfBookmarks(uri);
+        if (pages.isEmpty()) {
+            Toast.makeText(this, "No bookmarks for this PDF yet.", Toast.LENGTH_SHORT).show();
+            return;
+        }
+        String[] labels = new String[pages.size()];
+        for (int i = 0; i < pages.size(); i++) labels[i] = "Page " + (pages.get(i) + 1);
+        new AlertDialog.Builder(this)
+                .setTitle("PDF bookmarks")
+                .setItems(labels, (dialog, which) ->
+                        renderPdfPage(uri, pages.get(which), image, pageLabel, pageInput, previous, next, pageIndex, zoomLevel))
+                .setNegativeButton("Close", (dialog, which) -> dialog.dismiss())
+                .show();
+    }
 
     private void renderPdfPage(Uri uri, int requestedPage, ImageView image, TextView pageLabel, EditText pageInput,
                                Button previous, Button next, int[] pageIndex, float[] zoomLevel) {
