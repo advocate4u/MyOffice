@@ -16,3 +16,5 @@
 ## Limitations
 
 This is a subset of RTF. Color tables, paragraph alignment, lists, page layout, tables, images, embedded objects and style-preserving RTF export are not supported. Device and third-party office-app tests remain pending.
+
+| F75-07 | Import RTF with `\\super`, `\\sub`, `\\nosupersub` | Superscript/subscript spans are applied and reset correctly |
