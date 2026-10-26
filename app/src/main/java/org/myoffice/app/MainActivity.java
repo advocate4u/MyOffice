@@ -197,6 +197,8 @@ public final class MainActivity extends Activity {
         boolean strike;
         boolean superscript;
         boolean subscript;
+        int foregroundColor;
+        int backgroundColor;
         float sizeRatio = 1.0f;
         int alignment = 0; // 0=left, 1=center, 2=right
         RtfStyleState copy() {
@@ -207,12 +209,14 @@ public final class MainActivity extends Activity {
             copy.strike = strike;
             copy.superscript = superscript;
             copy.subscript = subscript;
+            copy.foregroundColor = foregroundColor;
+            copy.backgroundColor = backgroundColor;
             copy.sizeRatio = sizeRatio;
             copy.alignment = alignment;
             return copy;
         }
         void reset() {
-            bold = false; italic = false; underline = false; strike = false; superscript = false; subscript = false; sizeRatio = 1.0f; alignment = 0;
+            bold = false; italic = false; underline = false; strike = false; superscript = false; subscript = false; foregroundColor = 0; backgroundColor = 0; sizeRatio = 1.0f; alignment = 0;
         }
     }
     private ArrayList<Slide> deckSlides = new ArrayList<>();
@@ -1521,6 +1525,8 @@ public final class MainActivity extends Activity {
         if (style.strike) output.setSpan(new StrikethroughSpan(), start, end, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
         if (style.superscript) output.setSpan(new SuperscriptSpan(), start, end, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
         if (style.subscript) output.setSpan(new SubscriptSpan(), start, end, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+        if (style.foregroundColor != 0) output.setSpan(new ForegroundColorSpan(style.foregroundColor), start, end, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+        if (style.backgroundColor != 0) output.setSpan(new BackgroundColorSpan(style.backgroundColor), start, end, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
         if (Math.abs(style.sizeRatio - 1.0f) > 0.01f) output.setSpan(new RelativeSizeSpan(style.sizeRatio), start, end, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
     }
 
@@ -1529,6 +1535,43 @@ public final class MainActivity extends Activity {
         Layout.Alignment value = alignment == 1 ? Layout.Alignment.ALIGN_CENTER
                 : alignment == 2 ? Layout.Alignment.ALIGN_OPPOSITE : Layout.Alignment.ALIGN_NORMAL;
         output.setSpan(new AlignmentSpan.Standard(value), start, end, Spanned.SPAN_PARAGRAPH);
+    }
+
+    private int rtfColorComponent(String entry, String control) {
+        String key = "\\" + control;
+        int start = entry.indexOf(key);
+        if (start < 0) return -1;
+        start += key.length();
+        int end = start;
+        while (end < entry.length() && Character.isDigit(entry.charAt(end))) end++;
+        if (end == start) return -1;
+        try { return Math.max(0, Math.min(255, Integer.parseInt(entry.substring(start, end)))); }
+        catch (NumberFormatException e) { return -1; }
+    }
+
+    private ArrayList<Integer> parseRtfColorTable(String input) {
+        ArrayList<Integer> colors = new ArrayList<>();
+        colors.add(0);
+        int start = input.indexOf("{\\colortbl");
+        if (start < 0) return colors;
+        int end = input.indexOf('}', start);
+        if (end < 0) return colors;
+        String table = input.substring(start, end);
+        int firstSeparator = table.indexOf(';');
+        if (firstSeparator < 0) return colors;
+        String entries = table.substring(firstSeparator + 1);
+        for (String entry : entries.split(";")) {
+            int red = rtfColorComponent(entry, "red");
+            int green = rtfColorComponent(entry, "green");
+            int blue = rtfColorComponent(entry, "blue");
+            if (red < 0 || green < 0 || blue < 0) colors.add(0);
+            else colors.add(0xFF000000 | (red << 16) | (green << 8) | blue);
+        }
+        return colors;
+    }
+
+    private int rtfColorAt(ArrayList<Integer> colors, int index) {
+        return index >= 0 && index < colors.size() ? colors.get(index) : 0;
     }
 
     private SpannableStringBuilder readRtfRichText(Uri uri) throws Exception {
@@ -1546,6 +1589,7 @@ public final class MainActivity extends Activity {
             bytes = out.toByteArray();
         }
         String input = new String(bytes, "ISO-8859-1");
+        ArrayList<Integer> rtfColors = parseRtfColorTable(input);
         SpannableStringBuilder output = new SpannableStringBuilder();
         ArrayList<Boolean> skipStack = new ArrayList<>();
         ArrayList<RtfStyleState> styleStack = new ArrayList<>();
@@ -1653,6 +1697,8 @@ public final class MainActivity extends Activity {
             else if ("super".equals(word)) { style.superscript = true; style.subscript = false; }
             else if ("sub".equals(word)) { style.subscript = true; style.superscript = false; }
             else if ("nosupersub".equals(word)) { style.superscript = false; style.subscript = false; }
+            else if ("cf".equals(word) && parameter != null) style.foregroundColor = rtfColorAt(rtfColors, parameter);
+            else if ("highlight".equals(word) && parameter != null) style.backgroundColor = rtfColorAt(rtfColors, parameter);
             else if ("fs".equals(word) && parameter != null) {
                 float ratio = parameter / 24f;
                 if (ratio > 0.2f && ratio < 6f) style.sizeRatio = ratio;
