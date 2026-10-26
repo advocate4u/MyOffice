@@ -62,10 +62,12 @@ public final class MainActivity extends Activity {
     private static final int SAVE_TEXT = 4104;
     private static final int SAVE_CSV = 4105;
     private static final int SAVE_DOCX = 4106;
+    private static final int SAVE_PDF_COPY = 4107;
     private File pendingDocxFile;
     private String pendingCsvExport;
     private String pendingTextExport;
     private File pendingPdfFile;
+    private Uri pendingPdfCopySource;
     private static final String PREFS = "myoffice_recent";
     private static final String KEY = "uris";
     private static final int MAX_RECENTS = 12;
@@ -266,6 +268,23 @@ public final class MainActivity extends Activity {
                 return;
             }
             createPdfFromImagesAsync(images);
+            return;
+        }
+        if (request == SAVE_PDF_COPY) {
+            Uri source = pendingPdfCopySource;
+            pendingPdfCopySource = null;
+            if (result != RESULT_OK || data == null || data.getData() == null || source == null) return;
+            try (InputStream in = getContentResolver().openInputStream(source);
+                 java.io.OutputStream out = getContentResolver().openOutputStream(data.getData(), "wt")) {
+                if (in == null || out == null) throw new IllegalStateException("A document stream is unavailable");
+                byte[] buffer = new byte[8192];
+                int count;
+                while ((count = in.read(buffer)) != -1) out.write(buffer, 0, count);
+                out.flush();
+                Toast.makeText(this, "PDF copy saved.", Toast.LENGTH_SHORT).show();
+            } catch (Exception e) {
+                Toast.makeText(this, "Could not save this PDF copy.", Toast.LENGTH_LONG).show();
+            }
             return;
         }
         if (request == SAVE_DOCX) {
@@ -1016,6 +1035,20 @@ public final class MainActivity extends Activity {
 
 
     // Basic local PDF reader using Android's built-in PdfRenderer. It does not upload the document.
+    private void startPdfCopy(Uri source, String name) {
+        pendingPdfCopySource = source;
+        String suggested = name.toLowerCase(Locale.ROOT).endsWith(".pdf") ? name : name + ".pdf";
+        Intent create = new Intent(Intent.ACTION_CREATE_DOCUMENT);
+        create.addCategory(Intent.CATEGORY_OPENABLE);
+        create.setType("application/pdf");
+        create.putExtra(Intent.EXTRA_TITLE, suggested);
+        try { startActivityForResult(create, SAVE_PDF_COPY); }
+        catch (Exception e) {
+            pendingPdfCopySource = null;
+            Toast.makeText(this, "Could not open the Save PDF picker.", Toast.LENGTH_LONG).show();
+        }
+    }
+
     private void showPdf(Uri uri, String name) {
         LinearLayout content = column();
         TextView back = label("‹  Back to MyOffice", 16, true);
@@ -1100,6 +1133,7 @@ public final class MainActivity extends Activity {
         navigation.addView(previous, new LinearLayout.LayoutParams(0, -2, 1));
         navigation.addView(next, new LinearLayout.LayoutParams(0, -2, 1));
         content.addView(navigation);
+        content.addView(action("Save a copy", v -> startPdfCopy(uri, name)));
         content.addView(action("Share PDF", v -> {
             Intent share = new Intent(Intent.ACTION_SEND);
             share.setType("application/pdf");
