@@ -79,6 +79,10 @@ public final class MainActivity extends Activity {
     private final ArrayList<View> navigationHistory = new ArrayList<>();
     private boolean restoringBackNavigation = false;
     private long lastBackPressedAt = 0L;
+    private String currentScreenRoute = "home";
+    private final ArrayList<String> routeHistory = new ArrayList<>();
+    private final ArrayList<Boolean> homeHistory = new ArrayList<>();
+    private boolean homeVisible = true;
     private LinearLayout page;
     private LinearLayout recentList;
     private EditText recentSearchInput;
@@ -208,7 +212,13 @@ public final class MainActivity extends Activity {
         page.addView(foot);
         ScrollView scroll = new ScrollView(this);
         scroll.addView(page);
-        setContentView(scroll);
+        navigationHistory.clear();
+        routeHistory.clear();
+        homeHistory.clear();
+        currentRootView = null;
+        currentScreenRoute = "home";
+        setAppContentView(scroll, "home");
+        homeVisible = true;
     }
 
     private void addShortcutRow(LinearLayout parent,
@@ -780,7 +790,7 @@ public final class MainActivity extends Activity {
         content.addView(body);
         ScrollView scroll = new ScrollView(this);
         scroll.addView(content);
-        setContentView(scroll);
+        setAppContentView(scroll, "text");
     }
 
     private void showDetails(Uri uri, String name, String mime) {
@@ -805,7 +815,7 @@ public final class MainActivity extends Activity {
         }));
         ScrollView scroll = new ScrollView(this);
         scroll.addView(content);
-        setContentView(scroll);
+        setAppContentView(scroll, "details");
     }
 
 
@@ -869,7 +879,7 @@ public final class MainActivity extends Activity {
 
         ScrollView scroll = new ScrollView(this);
         scroll.addView(content);
-        setContentView(scroll);
+        setAppContentView(scroll, "notes-list");
     }
 
     private void noteSortButtonLabel(View view, int mode) {
@@ -1037,7 +1047,7 @@ public final class MainActivity extends Activity {
         });
         ScrollView scroll = new ScrollView(this);
         scroll.addView(content);
-        setContentView(scroll);
+        setAppContentView(scroll, "note-editor");
     }
 
 
@@ -1168,7 +1178,7 @@ public final class MainActivity extends Activity {
         content.addView(label("Local PDF preview. Editing, OCR and conversion are not included in this reader yet.", 12, false));
         ScrollView scroll = new ScrollView(this);
         scroll.addView(content);
-        setContentView(scroll);
+        setAppContentView(scroll, "pdf-reader");
         renderPdfPage(uri, pageIndex[0], pageImage, pageLabel, pageInput, previous, next, pageIndex, zoomLevel);
     }
 
@@ -1359,7 +1369,7 @@ public final class MainActivity extends Activity {
 
         ScrollView scroll = new ScrollView(this);
         scroll.addView(content);
-        setContentView(scroll);
+        setAppContentView(scroll, "writer-list");
     }
 
     private void writerSortButtonLabel(View view, int mode) {
@@ -1602,7 +1612,7 @@ public final class MainActivity extends Activity {
         });
         ScrollView scroll = new ScrollView(this);
         scroll.addView(content);
-        setContentView(scroll);
+        setAppContentView(scroll, "writer-editor");
     }
 
 
@@ -1692,6 +1702,48 @@ public final class MainActivity extends Activity {
         }
     }
 
+    private void setAppContentView(View screen, String route) {
+        boolean replaceTransition =
+                ("note-editor".equals(currentScreenRoute) && "notes-list".equals(route)) ||
+                ("writer-editor".equals(currentScreenRoute) && "writer-list".equals(route)) ||
+                ("spreadsheet-editor".equals(currentScreenRoute) && "spreadsheet-list".equals(route)) ||
+                ("presentation-editor".equals(currentScreenRoute) && "presentation-list".equals(route)) ||
+                ("slideshow".equals(currentScreenRoute) && "presentation-editor".equals(route));
+        if (!restoringBackNavigation && currentRootView != null && !replaceTransition) {
+            navigationHistory.add(currentRootView);
+            routeHistory.add(currentScreenRoute);
+            homeHistory.add(homeVisible);
+        }
+        currentRootView = screen;
+        currentScreenRoute = route;
+        homeVisible = "home".equals(route);
+        restoringBackNavigation = false;
+        setContentView(screen);
+    }
+
+    private void navigateBackOrExit() {
+        if (!navigationHistory.isEmpty()) {
+            int last = navigationHistory.size() - 1;
+            currentRootView = navigationHistory.remove(last);
+            currentScreenRoute = routeHistory.remove(last);
+            homeVisible = homeHistory.remove(last);
+            restoringBackNavigation = true;
+            setAppContentView(currentRootView, currentScreenRoute);
+            return;
+        }
+        if (!homeVisible) {
+            showHome();
+            return;
+        }
+        long now = SystemClock.elapsedRealtime();
+        if (now - lastBackPressedAt <= 2000L) {
+            finish();
+            return;
+        }
+        lastBackPressedAt = now;
+        Toast.makeText(this, "Press Back again to close MyOffice.", Toast.LENGTH_SHORT).show();
+    }
+
     @Override public void onBackPressed() {
         if (spreadsheetEditorOpen) {
             requestSpreadsheetExit();
@@ -1705,7 +1757,7 @@ public final class MainActivity extends Activity {
             showPresentationEditor(false);
             return;
         }
-        super.onBackPressed();
+        navigateBackOrExit();
     }
 
     private void showSpreadsheetList() {
@@ -1747,7 +1799,7 @@ public final class MainActivity extends Activity {
 
         ScrollView scroll = new ScrollView(this);
         scroll.addView(content);
-        setContentView(scroll);
+        setAppContentView(scroll, "spreadsheet-list");
     }
 
     private void sheetSortButtonLabel(View view, int mode) {
@@ -2044,7 +2096,7 @@ public final class MainActivity extends Activity {
         back.setOnClickListener(v -> requestSpreadsheetExit());
         ScrollView scroll = new ScrollView(this);
         scroll.addView(content);
-        setContentView(scroll);
+        setAppContentView(scroll, "spreadsheet-editor");
     }
 
 
@@ -2136,7 +2188,7 @@ public final class MainActivity extends Activity {
 
         ScrollView scroll = new ScrollView(this);
         scroll.addView(content);
-        setContentView(scroll);
+        setAppContentView(scroll, "presentation-list");
     }
 
     private void deckSortButtonLabel(View view, int mode) {
@@ -2348,7 +2400,7 @@ public final class MainActivity extends Activity {
         back.setOnClickListener(v -> requestPresentationExit());
         ScrollView scroll = new ScrollView(this);
         scroll.addView(content);
-        setContentView(scroll);
+        setAppContentView(scroll, "presentation-editor");
     }
 
     private void confirmDeleteFile(File file, String itemLabel, Runnable refresh) {
@@ -2398,7 +2450,7 @@ public final class MainActivity extends Activity {
         content.addView(navigation);
         ScrollView scroll = new ScrollView(this);
         scroll.addView(content);
-        setContentView(scroll);
+        setAppContentView(scroll, "slideshow");
     }
 
     private void updateRecentSortLabel() {
