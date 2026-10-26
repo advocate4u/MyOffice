@@ -78,6 +78,7 @@ An original Android office and learning app focused on free, offline-first use, 
 - Slideshow (feature F17): present text-only slide decks in a read-only slide view with previous/next navigation.
 - DOCX text import (feature F18): extract paragraph text from a local DOCX package into a new Writer copy; original is unchanged.
 - DOCX basic-format import (feature F65): import supported bold/italic/underline/strikethrough, text color, highlight and font-size runs into Writer spans. Tables, images, advanced styles and full round-trip fidelity are not preserved.
+- DOCX paragraph alignment (feature F66): import left/center/right/justified paragraph alignment spans and write supported paragraph alignment back during DOCX export.
 - DOCX export (feature F19): export Writer plain text as a minimal WordprocessingML DOCX package through Android's Save document picker.
 - DOCX formatted export (feature F64): export Writer rich-text runs with bold, italic, underline, strikethrough, text color, highlight and relative font size, plus the current left/center/right paragraph alignment. This is a focused compatibility subset, not full Word fidelity.
 - Arithmetic formula preview (feature F20): preview `=A1+B1`, subtraction, multiplication and division using numeric cell references, alongside the aggregate formulas from F16.
@@ -154,6 +155,7 @@ The uploaded APK has not yet been run through REA/JADX in this environment becau
 - [F63 PDF watermark/stamp test plan](docs/testing/F63-pdf-watermark-stamp-test-plan.md)
 - [F64 DOCX formatted export test plan](docs/testing/F64-docx-formatted-export-test-plan.md)
 - [F65 DOCX basic-format import test plan](docs/testing/F65-docx-basic-format-import-test-plan.md)
+- [F66 DOCX paragraph alignment test plan](docs/testing/F66-docx-paragraph-alignment-test-plan.md)
 - [F14 Text import test plan](docs/testing/F14-text-import-test-plan.md)
 - [F15 Find-in-text test plan](docs/testing/F15-find-in-text-test-plan.md)
 - [F16 Formula preview test plan](docs/testing/F16-formula-preview-test-plan.md)
