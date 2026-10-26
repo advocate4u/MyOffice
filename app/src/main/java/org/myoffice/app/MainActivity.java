@@ -1718,12 +1718,19 @@ public final class MainActivity extends Activity {
         String[] lines = block.split("\\n", -1);
         boolean hasTextLine = false;
         boolean allAlreadyFormatted = true;
-        for (String line : lines) {
-            if (line.trim().isEmpty()) continue;
+        int[] offsets = new int[lines.length];
+        int[] listNumbers = new int[lines.length];
+        int cursor = lineStart;
+        int nextNumber = 1;
+        for (int i = 0; i < lines.length; i++) {
+            offsets[i] = cursor;
+            cursor += lines[i].length() + 1;
+            if (lines[i].trim().isEmpty()) continue;
             hasTextLine = true;
+            listNumbers[i] = nextNumber++;
             if (numbered) {
-                if (!line.matches("^\\d+\\.\\s+.*$")) allAlreadyFormatted = false;
-            } else if (!line.startsWith("• ")) {
+                if (!lines[i].matches("^\\d+\\.\\s+.*$")) allAlreadyFormatted = false;
+            } else if (!lines[i].startsWith("• ")) {
                 allAlreadyFormatted = false;
             }
         }
@@ -1731,26 +1738,23 @@ public final class MainActivity extends Activity {
             Toast.makeText(this, "Enter text first, then apply a list.", Toast.LENGTH_SHORT).show();
             return;
         }
-        int offset = lineStart;
-        int number = 1;
-        for (String line : lines) {
-            if (!line.trim().isEmpty()) {
-                if (allAlreadyFormatted) {
-                    int prefixLength = 0;
-                    if (numbered) {
-                        String stripped = line.replaceFirst("^\\d+\\.\\s+", "");
-                        prefixLength = line.length() - stripped.length();
-                    } else if (line.startsWith("• ")) {
-                        prefixLength = 2;
-                    }
-                    if (prefixLength > 0) editable.delete(offset, offset + prefixLength);
-                } else {
-                    String prefix = numbered ? number + ". " : "• ";
-                    editable.insert(offset, prefix);
-                    number++;
+        for (int i = lines.length - 1; i >= 0; i--) {
+            String line = lines[i];
+            if (line.trim().isEmpty()) continue;
+            int offset = offsets[i];
+            if (allAlreadyFormatted) {
+                int prefixLength = 0;
+                if (numbered) {
+                    String stripped = line.replaceFirst("^\\d+\\.\\s+", "");
+                    prefixLength = line.length() - stripped.length();
+                } else if (line.startsWith("• ")) {
+                    prefixLength = 2;
                 }
+                if (prefixLength > 0) editable.delete(offset, offset + prefixLength);
+            } else {
+                String prefix = numbered ? listNumbers[i] + ". " : "• ";
+                editable.insert(offset, prefix);
             }
-            offset += line.length() + 1;
         }
         Toast.makeText(this, allAlreadyFormatted
                 ? (numbered ? "Numbering removed." : "Bullets removed.")
