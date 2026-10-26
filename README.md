@@ -195,6 +195,8 @@ The uploaded APK has not yet been run through REA/JADX in this environment becau
 
 - PDF page reorder / custom selection: enter a comma-separated order such as `3,1,2` to export selected pages in that order as a new flattened PDF; duplicate or out-of-range pages are rejected and the source remains unchanged.
 
+- DOCX font-family import: read common `w:rFonts` ascii/hAnsi/eastAsia run properties into Writer font-family spans; the chosen font may be substituted if unavailable on the device.
+
 ## Current status
 
 F0/F1 file hub prototype, F2 offline notes, F3 basic PDF reader, F4 plain-text Writer, F5 CSV spreadsheet grid, F6 text-only presentations, F7 image-to-PDF conversion, F8 text export and F9 CSV import are in source. F2–F50 features are implemented to varying prototype levels. F51 adds optional MyAdv-key release signing and F52 documents Back navigation. A signed release APK is created only when the same signing secrets are configured for this repository. Each feature requires successful CI and device acceptance tests before it can be considered verified. Device acceptance tests remain pending until the APK is installed and tested on Android. Work proceeds one feature at a time, with a build after each feature.
