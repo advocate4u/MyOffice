@@ -834,6 +834,24 @@ public final class MainActivity extends Activity {
         setContentView(scroll);
     }
 
+    private void duplicateNote(File source) {
+        try {
+            String[] data = readNote(source);
+            String originalTitle = data[0].trim().isEmpty() ? "Untitled note" : data[0].trim();
+            String copyTitle = originalTitle + " (copy)";
+            File target = new File(notesDirectory(), "note_" + System.currentTimeMillis() + ".note");
+            try (OutputStreamWriter writer = new OutputStreamWriter(new FileOutputStream(target), "UTF-8")) {
+                writer.write(NOTE_PREFIX + copyTitle + "\\n\\n");
+                writer.write(data[1]);
+                writer.flush();
+            }
+            Toast.makeText(this, "Note duplicated.", Toast.LENGTH_SHORT).show();
+            showNotes();
+        } catch (Exception e) {
+            Toast.makeText(this, "Could not duplicate this note.", Toast.LENGTH_LONG).show();
+        }
+    }
+
     private void renderNoteResults(LinearLayout results, String queryText) {
         results.removeAllViews();
         File[] files = noteFiles();
@@ -860,6 +878,7 @@ public final class MainActivity extends Activity {
             card.addView(label(title, 17, true));
             card.addView(label(preview.isEmpty() ? "Empty note" : preview, 13, false));
             card.addView(label("Modified " + DateFormat.getDateTimeInstance().format(new Date(file.lastModified())), 11, false));
+            card.addView(action("Duplicate note", v -> duplicateNote(selected)));
             card.addView(action("Delete note", v -> confirmDeleteFile(selected, "note", () -> showNotes())));
             card.setOnClickListener(v -> {
                 try {
