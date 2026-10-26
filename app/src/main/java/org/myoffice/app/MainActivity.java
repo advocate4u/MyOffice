@@ -78,6 +78,7 @@ public final class MainActivity extends Activity {
     private int recentFilterMode = 0;
     private int noteSortMode = 0;
     private int writerSortMode = 0;
+    private int spreadsheetSortMode = 0;
     private final ArrayList<Button> recentFilterButtons = new ArrayList<>();
     private SharedPreferences prefs;
     private final ArrayList<String> recentUris = new ArrayList<>();
@@ -1633,35 +1634,68 @@ public final class MainActivity extends Activity {
             }
             showSpreadsheetEditor(null, blank, true);
         }));
-        File[] files = csvFiles();
-        if (files.length == 0) {
-            content.addView(gap(12));
-            content.addView(label("No CSV sheets yet.", 15, false));
-        } else {
-            for (File file : files) {
-                String preview = "";
-                try { preview = readCsvFile(file).split("\\R", 2)[0]; } catch (Exception ignored) { }
-                final File selected = file;
-                LinearLayout card = new LinearLayout(this);
-                card.setOrientation(LinearLayout.VERTICAL);
-                card.setPadding(dp(12), dp(8), dp(12), dp(8));
-                card.setBackgroundColor(0xFFFFFFFF);
-                LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(-1, -2);
-                params.setMargins(0, dp(5), 0, dp(5));
-                content.addView(card, params);
-                card.addView(label(file.getName(), 17, true));
-                card.addView(label(preview.isEmpty() ? "Empty sheet" : preview, 13, false));
-                card.addView(label("Modified " + DateFormat.getDateTimeInstance().format(new Date(file.lastModified())), 11, false));
-                card.addView(action("Delete sheet", v -> confirmDeleteFile(selected, "sheet", () -> showSpreadsheetList())));
-                card.setOnClickListener(v -> {
-                    try { showSpreadsheetEditor(selected, parseCsv(readCsvFile(selected)), true); }
-                    catch (Exception e) { Toast.makeText(this, "Could not open this CSV file.", Toast.LENGTH_LONG).show(); }
-                });
-            }
-        }
+        EditText sheetSearch = new EditText(this);
+        sheetSearch.setSingleLine(true);
+        sheetSearch.setHint("Search CSV sheets");
+        content.addView(sheetSearch);
+        LinearLayout sheetResults = new LinearLayout(this);
+        sheetResults.setOrientation(LinearLayout.VERTICAL);
+        Button sheetSortButton = action("Sort: Modified newest", v -> {
+            spreadsheetSortMode = (spreadsheetSortMode + 1) % 2;
+            sheetSortButtonLabel(v, spreadsheetSortMode);
+            renderSpreadsheetResults(sheetResults, sheetSearch.getText().toString());
+        });
+        content.addView(sheetSortButton);
+        content.addView(sheetResults);
+        sheetSearch.addTextChangedListener(new TextWatcher() {
+            @Override public void beforeTextChanged(CharSequence s, int start, int count, int after) { }
+            @Override public void onTextChanged(CharSequence s, int start, int before, int count) { renderSpreadsheetResults(sheetResults, s.toString()); }
+            @Override public void afterTextChanged(Editable s) { }
+        });
+        renderSpreadsheetResults(sheetResults, "");
+
         ScrollView scroll = new ScrollView(this);
         scroll.addView(content);
         setContentView(scroll);
+    }
+
+    private void sheetSortButtonLabel(View view, int mode) {
+        if (view instanceof Button) ((Button) view).setText(mode == 0 ? "Sort: Modified newest" : "Sort: Name A–Z");
+    }
+
+    private void renderSpreadsheetResults(LinearLayout results, String queryText) {
+        results.removeAllViews();
+        File[] files = csvFiles();
+        if (spreadsheetSortMode == 1) {
+            Arrays.sort(files, Comparator.comparing(File::getName, String.CASE_INSENSITIVE_ORDER));
+        } else {
+            Arrays.sort(files, Comparator.comparingLong(File::lastModified).reversed());
+        }
+        String query = queryText == null ? "" : queryText.trim().toLowerCase(Locale.ROOT);
+        int shown = 0;
+        for (File file : files) {
+            String preview = "";
+            try { preview = readCsvFile(file).split("\\R", 2)[0]; } catch (Exception ignored) { }
+            if (!query.isEmpty() && !(file.getName() + " " + preview).toLowerCase(Locale.ROOT).contains(query)) continue;
+            shown++;
+            final File selected = file;
+            LinearLayout card = new LinearLayout(this);
+            card.setOrientation(LinearLayout.VERTICAL);
+            card.setPadding(dp(12), dp(8), dp(12), dp(8));
+            card.setBackgroundColor(0xFFFFFFFF);
+            LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(-1, -2);
+            params.setMargins(0, dp(5), 0, dp(5));
+            results.addView(card, params);
+            card.addView(label(file.getName(), 17, true));
+            card.addView(label(preview.isEmpty() ? "Empty sheet" : preview, 13, false));
+            card.addView(label("Modified " + DateFormat.getDateTimeInstance().format(new Date(file.lastModified())), 11, false));
+            card.addView(action("Delete sheet", v -> confirmDeleteFile(selected, "sheet", () -> showSpreadsheetList())));
+            card.setOnClickListener(v -> {
+                try { showSpreadsheetEditor(selected, parseCsv(readCsvFile(selected)), true); }
+                catch (Exception e) { Toast.makeText(this, "Could not open this CSV file.", Toast.LENGTH_LONG).show(); }
+            });
+        }
+        if (shown == 0) results.addView(label(query.isEmpty() ? "No CSV sheets yet." : "No sheets match your search.", 15, false));
     }
 
     private ArrayList<ArrayList<String>> readSheetCells() {
