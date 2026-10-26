@@ -1215,8 +1215,8 @@ public final class MainActivity extends Activity {
 
     // Exports a rasterized copy so the chosen viewing rotation is baked into every page.
     // The source PDF is never modified; text selection/search in the output is not preserved.
-    private void exportRotatedPdfCopy(Uri source, String name, int rotationDegrees) {
-        Toast.makeText(this, "Preparing rotated PDF copy…", Toast.LENGTH_SHORT).show();
+    private void exportEditedPdfCopy(Uri source, String name, int rotationDegrees, String watermarkText) {
+        Toast.makeText(this, watermarkText == null || watermarkText.trim().isEmpty() ? "Preparing rotated PDF copy…" : "Preparing stamped PDF copy…", Toast.LENGTH_SHORT).show();
         new Thread(() -> {
             File temp = null;
             try (ParcelFileDescriptor descriptor = getContentResolver().openFileDescriptor(source, "r")) {
@@ -1246,6 +1246,18 @@ public final class MainActivity extends Activity {
                                 PdfDocument.Page outputPage = output.startPage(
                                         new PdfDocument.PageInfo.Builder(bitmap.getWidth(), bitmap.getHeight(), i + 1).create());
                                 outputPage.getCanvas().drawBitmap(bitmap, 0f, 0f, null);
+                                if (watermarkText != null && !watermarkText.trim().isEmpty()) {
+                                    Paint stampPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+                                    stampPaint.setColor(0x99D32F2F);
+                                    stampPaint.setTextSize(Math.max(26f, bitmap.getWidth() * 0.045f));
+                                    stampPaint.setTextAlign(Paint.Align.CENTER);
+                                    stampPaint.setTypeface(Typeface.create(Typeface.DEFAULT, Typeface.BOLD));
+                                    outputPage.getCanvas().save();
+                                    outputPage.getCanvas().rotate(-30f, bitmap.getWidth() / 2f, bitmap.getHeight() / 2f);
+                                    outputPage.getCanvas().drawText(watermarkText.trim(), bitmap.getWidth() / 2f,
+                                            bitmap.getHeight() / 2f, stampPaint);
+                                    outputPage.getCanvas().restore();
+                                }
                                 output.finishPage(outputPage);
                                 bitmap.recycle();
                             }
@@ -1265,7 +1277,7 @@ public final class MainActivity extends Activity {
                     create.setType("application/pdf");
                     String base = name.toLowerCase(Locale.ROOT).endsWith(".pdf")
                             ? name.substring(0, name.length() - 4) : name;
-                    create.putExtra(Intent.EXTRA_TITLE, base + "_rotated.pdf");
+                    create.putExtra(Intent.EXTRA_TITLE, base + ((watermarkText == null || watermarkText.trim().isEmpty()) ? "_rotated.pdf" : "_stamped.pdf"));
                     try { startActivityForResult(create, SAVE_PDF); }
                     catch (Exception e) {
                         pendingPdfFile = null;
@@ -1363,7 +1375,25 @@ public final class MainActivity extends Activity {
             renderPdfPage(uri, pageIndex[0], pageImage, pageLabel, pageInput, previousRef[0], nextRef[0], pageIndex, zoomLevel);
             Toast.makeText(this, "PDF view reset to 0°.", Toast.LENGTH_SHORT).show();
         }));
-        content.addView(action("Export rotated PDF copy", v -> exportRotatedPdfCopy(uri, name, currentPdfRotationDegrees)));
+        content.addView(action("Export rotated PDF copy", v -> exportEditedPdfCopy(uri, name, currentPdfRotationDegrees, "")));
+        content.addView(action("Add watermark / stamp", v -> {
+            EditText stampInput = new EditText(this);
+            stampInput.setSingleLine(true);
+            stampInput.setHint("e.g. DRAFT, COPY, APPROVED");
+            new AlertDialog.Builder(this)
+                    .setTitle("Stamp every page")
+                    .setMessage("Creates a new flattened PDF copy; the original remains unchanged.")
+                    .setView(stampInput)
+                    .setNegativeButton("Cancel", (dialog, which) -> dialog.dismiss())
+                    .setPositiveButton("Export stamped copy", (dialog, which) -> {
+                        String stamp = stampInput.getText().toString().trim();
+                        if (stamp.isEmpty()) {
+                            Toast.makeText(this, "Enter stamp text first.", Toast.LENGTH_SHORT).show();
+                            return;
+                        }
+                        exportEditedPdfCopy(uri, name, currentPdfRotationDegrees, stamp);
+                    }).show();
+        }));
         LinearLayout navigation = new LinearLayout(this);
         navigation.setOrientation(LinearLayout.HORIZONTAL);
         Button previous = action("Previous page", v -> {
