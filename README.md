@@ -78,6 +78,7 @@ An original Android office and learning app focused on free, offline-first use, 
 - Slideshow (feature F17): present text-only slide decks in a read-only slide view with previous/next navigation.
 - DOCX text import (feature F18): extract paragraph text from a local DOCX package into a new Writer copy; original is unchanged.
 - DOCX basic-format import (feature F65): import supported bold/italic/underline/strikethrough, text color, highlight and font-size runs into Writer spans. Tables, images, advanced styles and full round-trip fidelity are not preserved.
+- Basic XLSX worksheet import (feature F66): import shared-string, inline-string, numeric, boolean and cached formula-result values from the first worksheet into a new local editable CSV sheet. The source XLSX remains unchanged; cell formatting, multiple worksheets and XLSX export are not yet supported.
 - DOCX paragraph alignment (feature F66): import left/center/right/justified paragraph alignment spans and write supported paragraph alignment back during DOCX export.
 - DOCX export (feature F19): export Writer plain text as a minimal WordprocessingML DOCX package through Android's Save document picker.
 - DOCX formatted export (feature F64): export Writer rich-text runs with bold, italic, underline, strikethrough, text color, highlight and relative font size, plus the current left/center/right paragraph alignment. This is a focused compatibility subset, not full Word fidelity.
