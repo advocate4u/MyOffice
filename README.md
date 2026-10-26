@@ -25,6 +25,7 @@ An original Android office and learning app focused on free, offline-first use, 
 - CSV import (feature F9): open an existing local CSV into the editable grid, with a 1 MiB import limit and save-as-new behavior that leaves the original file unchanged.
 - CSV export (feature F10): export the current editable grid to a user-selected UTF-8 `.csv` file, with standard comma/quote escaping.
 - PDF sharing (feature F11): share a PDF opened in MyOffice through Android's share chooser, with read-only URI access.
+- Local deletion (feature F12): delete app-private notes, Writer documents, CSV sheets and slide decks after a confirmation dialog.
 - No login or network permission is required for these core features.
 - Rich-text formatting, DOCX import/export, formulas, XLSX/PPTX import/export, slide themes/images/animations, camera scanning/OCR, PDF annotation/search and advanced office functionality are not implemented yet.
 
@@ -58,6 +59,7 @@ The uploaded APK has not yet been run through REA/JADX in this environment becau
 - [F9 CSV import test plan](docs/testing/F9-csv-import-test-plan.md)
 - [F10 CSV export test plan](docs/testing/F10-csv-export-test-plan.md)
 - [F11 PDF sharing test plan](docs/testing/F11-pdf-sharing-test-plan.md)
+- [F12 Local deletion test plan](docs/testing/F12-local-deletion-test-plan.md)
 
 ## Current status
 
