@@ -34,6 +34,8 @@ An original Android office and learning app focused on free, offline-first use, 
 - Recent sorting (feature F22): cycle through newest-first, filename A–Z and largest-first ordering; search and remove-from-recents continue to work with the selected order.
 - Recent-file favorites (feature F53): mark recent documents as favorites, persist favorites locally across app restarts, filter the Home list to favorites, and remove a favorite without modifying the source file.
 - Dedicated favorites screen (feature F54): browse and search saved favorite URIs separately from recent history, reopen a favorite, or remove its star without editing the document.
+- Favorites-first recent sorting (feature F55): sort the Home recent-file list with favorites first, preserving newest-first order within favorites and non-favorites.
+- Share from recent files (feature F56): share a recent document directly through Android's chooser without first opening it; source file is not modified.
 - Home shortcuts (feature F23): group note, Writer, spreadsheet, presentation and image-to-PDF entry points into compact two-column tiles while keeping Open a file prominent.
 - Spreadsheet back protection (feature F24): Android's system Back key uses the same save/discard/keep-editing prompt as the in-screen Back action when a CSV sheet has unsaved changes.
 - Recent type filters (feature F25): filter recent items to All, PDF, Text, CSV or common Office formats while retaining filename search and sorting.
