@@ -16,8 +16,8 @@ android {
         minSdk 26
         targetSdk 35
         // Incremented for the next compatible release. Does not bypass signing checks.
-        versionCode 7
-        versionName '0.4.3'
+        versionCode 8
+        versionName '0.4.4'
     }
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_17
