@@ -918,6 +918,16 @@ public final class MainActivity extends Activity {
             String filename = safeTextFilename(noteTitle) + ".txt";
             startTextExport(filename, noteTitle + "\\n\\n" + body.getText().toString());
         }));
+        content.addView(action("Share note", v -> {
+            String noteTitle = title.getText().toString().trim();
+            if (noteTitle.isEmpty()) noteTitle = "Untitled note";
+            Intent share = new Intent(Intent.ACTION_SEND);
+            share.setType("text/plain");
+            share.putExtra(Intent.EXTRA_SUBJECT, noteTitle);
+            share.putExtra(Intent.EXTRA_TEXT, noteTitle + "\\n\\n" + body.getText().toString());
+            try { startActivity(Intent.createChooser(share, "Share note")); }
+            catch (Exception e) { Toast.makeText(this, "No compatible sharing app was found.", Toast.LENGTH_LONG).show(); }
+        }));
         content.addView(action("Discard changes", v -> new AlertDialog.Builder(this)
                 .setTitle("Discard this edit?")
                 .setMessage("Unsaved changes will be lost.")
