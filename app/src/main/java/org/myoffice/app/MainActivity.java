@@ -1126,12 +1126,27 @@ public final class MainActivity extends Activity {
         }
         if (lower.endsWith(".xlsx") || mime.equals("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")) {
             try {
-                ArrayList<ArrayList<String>> imported = readXlsxSheet(uri);
-                Toast.makeText(this, "First worksheet imported as a new local CSV sheet. The original XLSX is unchanged.", Toast.LENGTH_LONG).show();
-                showSpreadsheetEditor(null, imported, true);
+                ArrayList<String> worksheetPaths = listXlsxWorksheetPaths(uri);
+                if (worksheetPaths.isEmpty()) throw new IllegalArgumentException("No worksheet XML was found");
+                String[] labels = new String[worksheetPaths.size()];
+                for (int i = 0; i < labels.length; i++) labels[i] = "Worksheet " + (i + 1);
+                new AlertDialog.Builder(this)
+                        .setTitle("Choose worksheet to import")
+                        .setItems(labels, (dialog, which) -> {
+                            try {
+                                ArrayList<ArrayList<String>> imported = readXlsxSheet(uri, worksheetPaths.get(which));
+                                Toast.makeText(this, labels[which] + " imported as a new local CSV sheet. The original XLSX is unchanged.", Toast.LENGTH_LONG).show();
+                                showSpreadsheetEditor(null, imported, true);
+                            } catch (Exception e) {
+                                Toast.makeText(this, "Could not import this worksheet. Basic cell values are supported.", Toast.LENGTH_LONG).show();
+                                showDetails(uri, name, mime);
+                            }
+                        })
+                        .setNegativeButton("Cancel", (dialog, which) -> dialog.dismiss())
+                        .show();
                 return;
             } catch (Exception e) {
-                Toast.makeText(this, "Could not import this XLSX. Basic first-sheet cell values are supported.", Toast.LENGTH_LONG).show();
+                Toast.makeText(this, "Could not inspect this XLSX workbook. Basic worksheet cell values are supported.", Toast.LENGTH_LONG).show();
                 showDetails(uri, name, mime);
                 return;
             }
@@ -3810,7 +3825,33 @@ public final class MainActivity extends Activity {
         return value.toString();
     }
 
+    private ArrayList<String> listXlsxWorksheetPaths(Uri uri) throws Exception {
+        if (sizeOf(uri) > 10L * 1024L * 1024L) throw new IllegalArgumentException("XLSX exceeds the 10 MiB import limit");
+        ArrayList<String> paths = new ArrayList<>();
+        try (InputStream source = getContentResolver().openInputStream(uri)) {
+            if (source == null) throw new IllegalStateException("XLSX source unavailable");
+            try (ZipInputStream zip = new ZipInputStream(source)) {
+                ZipEntry entry;
+                while ((entry = zip.getNextEntry()) != null) {
+                    String path = entry.getName();
+                    if (path.matches("xl/worksheets/sheet[0-9]+\\.xml")) paths.add(path);
+                }
+            }
+        }
+        paths.sort(Comparator.comparingInt(path -> {
+            java.util.regex.Matcher matcher = java.util.regex.Pattern.compile("sheet([0-9]+)\\.xml$").matcher(path);
+            if (!matcher.find()) return Integer.MAX_VALUE;
+            try { return Integer.parseInt(matcher.group(1)); }
+            catch (NumberFormatException ignored) { return Integer.MAX_VALUE; }
+        }));
+        return paths;
+    }
+
     private ArrayList<ArrayList<String>> readXlsxSheet(Uri uri) throws Exception {
+        return readXlsxSheet(uri, "xl/worksheets/sheet1.xml");
+    }
+
+    private ArrayList<ArrayList<String>> readXlsxSheet(Uri uri, String worksheetPath) throws Exception {
         if (sizeOf(uri) > 10L * 1024L * 1024L) throw new IllegalArgumentException("XLSX exceeds the 10 MiB import limit");
         byte[] sharedXml = null;
         byte[] sheetXml = null;
@@ -3821,7 +3862,7 @@ public final class MainActivity extends Activity {
             ZipEntry entry;
             while ((entry = zip.getNextEntry()) != null) {
                 String entryName = entry.getName();
-                if ("xl/sharedStrings.xml".equals(entryName) || "xl/worksheets/sheet1.xml".equals(entryName)) {
+                if ("xl/sharedStrings.xml".equals(entryName) || worksheetPath.equals(entryName)) {
                     ByteArrayOutputStream out = new ByteArrayOutputStream();
                     byte[] buffer = new byte[8192];
                     int count;
@@ -3831,11 +3872,11 @@ public final class MainActivity extends Activity {
                         out.write(buffer, 0, count);
                     }
                     if ("xl/sharedStrings.xml".equals(entryName)) sharedXml = out.toByteArray();
-                    else sheetXml = out.toByteArray();
+                    else if (worksheetPath.equals(entryName)) sheetXml = out.toByteArray();
                 }
             }
         }
-        if (sheetXml == null) throw new IllegalArgumentException("XLSX first worksheet was not found");
+        if (sheetXml == null) throw new IllegalArgumentException("Selected XLSX worksheet was not found");
         String namespace = "http://schemas.openxmlformats.org/spreadsheetml/2006/main";
         ArrayList<String> sharedStrings = new ArrayList<>();
         if (sharedXml != null) {
