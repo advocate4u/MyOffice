@@ -1424,6 +1424,10 @@ public final class MainActivity extends Activity {
             showPresentationEditor(false);
         }));
         content.addView(action("Save slide deck", v -> savePresentation()));
+        content.addView(action("Start slideshow", v -> {
+            syncDeckEditor();
+            showSlideshow();
+        }));
         content.addView(action("Share current slide text", v -> {
             syncDeckEditor();
             Slide current = deckSlides.get(deckIndex);
@@ -1475,6 +1479,39 @@ public final class MainActivity extends Activity {
                         Toast.makeText(this, "Could not delete " + itemLabel.toLowerCase(Locale.ROOT) + ".", Toast.LENGTH_LONG).show();
                     }
                 }).show();
+    }
+
+
+    private void showSlideshow() {
+        if (deckSlides.isEmpty()) deckSlides.add(new Slide("", ""));
+        deckIndex = Math.max(0, Math.min(deckIndex, deckSlides.size() - 1));
+        Slide slide = deckSlides.get(deckIndex);
+        LinearLayout content = column();
+        TextView exit = label("‹  Exit slideshow", 16, true);
+        exit.setOnClickListener(v -> showPresentationEditor(false));
+        content.addView(exit);
+        content.addView(label("Slide " + (deckIndex + 1) + " of " + deckSlides.size(), 13, false));
+        TextView title = label(slide.title.isEmpty() ? " " : slide.title, 30, true);
+        title.setGravity(Gravity.CENTER);
+        title.setPadding(dp(8), dp(24), dp(8), dp(24));
+        content.addView(title);
+        TextView body = label(slide.body.isEmpty() ? " " : slide.body, 22, false);
+        body.setGravity(Gravity.TOP | Gravity.CENTER_HORIZONTAL);
+        body.setPadding(dp(16), dp(20), dp(16), dp(20));
+        body.setBackgroundColor(0xFFFFFFFF);
+        content.addView(body, new LinearLayout.LayoutParams(-1, dp(360)));
+        LinearLayout navigation = new LinearLayout(this);
+        navigation.setOrientation(LinearLayout.HORIZONTAL);
+        navigation.addView(action("Previous", v -> {
+            if (deckIndex > 0) { deckIndex--; showSlideshow(); }
+        }), new LinearLayout.LayoutParams(0, -2, 1));
+        navigation.addView(action("Next", v -> {
+            if (deckIndex < deckSlides.size() - 1) { deckIndex++; showSlideshow(); }
+        }), new LinearLayout.LayoutParams(0, -2, 1));
+        content.addView(navigation);
+        ScrollView scroll = new ScrollView(this);
+        scroll.addView(content);
+        setContentView(scroll);
     }
 
     private void renderRecents() {
