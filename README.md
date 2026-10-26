@@ -11,6 +11,10 @@ An original Android office and learning app focused on free, offline-first use, 
 - Label evidence honestly: public documentation is not the same as direct device verification.
 - Prioritize local file safety, offline behavior, Hindi text, accessibility and low storage use.
 
+## UI direction (F87)
+
+- Home-screen visual polish: use a WPS-inspired blue-and-white office-app style with rounded shortcut cards, a prominent blue Open action, consistent touch targets, and a softer neutral canvas. This is an original MyOffice implementation, not a copy of WPS branding or proprietary assets. Verify on a physical device for spacing and accessibility; this does not yet mean every editor matches WPS visually.
+
 ## Current implementation
 
 - Android app module: `app/`, Java 17, minSdk 26.
