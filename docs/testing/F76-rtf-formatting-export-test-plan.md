@@ -16,3 +16,5 @@
 ## Limitations
 
 This feature exports a subset of character formatting only. Font colors, highlights, paragraph alignment, margins, lists, tables, images, headers/footers and other RTF features are not supported. Device and third-party office-app tests remain pending.
+
+| F76-07 | Apply Writer superscript/subscript and export RTF | Output contains `\\super`/`\\sub` controls for formatted runs |
