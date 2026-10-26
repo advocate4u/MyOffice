@@ -1713,14 +1713,37 @@ public final class MainActivity extends Activity {
         return props.toString();
     }
 
+    private String rtfParagraphAlignmentAt(Spanned richText, int position) {
+        Object[] spans = richText.getSpans(position, Math.min(richText.length(), position + 1), AlignmentSpan.class);
+        for (Object span : spans) {
+            if (!(span instanceof AlignmentSpan)) continue;
+            Layout.Alignment alignment = ((AlignmentSpan) span).getAlignment();
+            if (alignment == Layout.Alignment.ALIGN_CENTER) return "\\qc ";
+            if (alignment == Layout.Alignment.ALIGN_OPPOSITE) return "\\qr ";
+            if (alignment == Layout.Alignment.ALIGN_NORMAL) return "\\ql ";
+            // Android exposes justified paragraph alignment as ALIGN_NORMAL on older versions;
+            // avoid inventing justification when the span cannot be distinguished reliably.
+        }
+        return "\\ql ";
+    }
+
     private String escapeRtfRichText(Spanned richText) {
         String plain = richText.toString();
         StringBuilder rtf = new StringBuilder("{\\rtf1\\ansi\\deff0\\uc1\n");
         int position = 0;
         while (position < plain.length()) {
+            if (position == 0 || plain.charAt(position - 1) == '\\n') {
+                rtf.append(rtfParagraphAlignmentAt(richText, position));
+            }
+            if (plain.charAt(position) == '\\n') {
+                rtf.append("\\par\n");
+                position++;
+                continue;
+            }
             String properties = rtfPropertiesAt(richText, position);
             int start = position;
-            while (position < plain.length() && properties.equals(rtfPropertiesAt(richText, position))) {
+            while (position < plain.length() && plain.charAt(position) != '\\n'
+                    && properties.equals(rtfPropertiesAt(richText, position))) {
                 position += Character.charCount(plain.codePointAt(position));
             }
             rtf.append('{').append(properties);
