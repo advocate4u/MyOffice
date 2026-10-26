@@ -4359,6 +4359,17 @@ public final class MainActivity extends Activity {
         return String.format(Locale.ROOT, "%.6f", result).replaceAll("0+$", "").replaceAll("\\.$", "");
     }
 
+    private Double numericFormulaOperand(String token, ArrayList<ArrayList<String>> data) {
+        int[] reference = parseCellReference(token);
+        if (reference != null) return numericCell(data, reference);
+        try {
+            if (token.isEmpty()) return null;
+            return Double.parseDouble(token);
+        } catch (NumberFormatException ignored) {
+            return null;
+        }
+    }
+
     private String evaluateAggregateFormula(String formula, ArrayList<ArrayList<String>> data) {
         String value = formula.trim();
         if (!value.startsWith("=")) return null;
@@ -4373,12 +4384,11 @@ public final class MainActivity extends Activity {
                 }
             }
             if (operatorIndex > 0 && operatorIndex < expression.length() - 1) {
-                int[] leftRef = parseCellReference(expression.substring(0, operatorIndex));
-                int[] rightRef = parseCellReference(expression.substring(operatorIndex + 1));
-                if (leftRef != null && rightRef != null) {
-                    Double left = numericCell(data, leftRef);
-                    Double right = numericCell(data, rightRef);
-                    if (left == null || right == null) return "ERROR: both referenced cells must contain numbers";
+                String leftToken = expression.substring(0, operatorIndex);
+                String rightToken = expression.substring(operatorIndex + 1);
+                Double left = numericFormulaOperand(leftToken, data);
+                Double right = numericFormulaOperand(rightToken, data);
+                if (left != null && right != null) {
                     char operator = expression.charAt(operatorIndex);
                     if (operator == '/' && right == 0d) return "ERROR: division by zero";
                     double result;
@@ -4457,7 +4467,9 @@ public final class MainActivity extends Activity {
 
     private void showFormulaHelp() {
         String message = "MyOffice formula preview supports simple arithmetic between two cell references and these range functions:\n\n"
+                + "=1+2    Calculate numeric constants\n"
                 + "=A1+B1    Add two referenced cells\n"
+                + "=A1+2    Combine a cell reference and a number\n"
                 + "=A1-B1    Subtract\n"
                 + "=A1*B1    Multiply\n"
                 + "=A1/B1    Divide (division by zero is reported)\n"
