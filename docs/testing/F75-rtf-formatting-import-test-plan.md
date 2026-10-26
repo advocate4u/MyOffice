@@ -18,3 +18,5 @@
 This is a subset of RTF. Color tables, paragraph alignment, lists, page layout, tables, images, embedded objects and style-preserving RTF export are not supported. Device and third-party office-app tests remain pending.
 
 | F75-07 | Import RTF with `\\super`, `\\sub`, `\\nosupersub` | Superscript/subscript spans are applied and reset correctly |
+
+| F75-08 | Import RTF with `\\colortbl`, `\\cfN` and `\\highlightN` | Font colors and highlight spans are applied from the document's color table |
