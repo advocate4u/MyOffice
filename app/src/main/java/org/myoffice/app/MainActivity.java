@@ -2316,6 +2316,89 @@ public final class MainActivity extends Activity {
 
     // Exports a rasterized copy so the chosen viewing rotation is baked into every page.
     // The source PDF is never modified; text selection/search in the output is not preserved.
+    private void exportPdfPagesInOrder(Uri source, String name, int rotationDegrees, String orderText) {
+        ArrayList<Integer> requestedPages = new ArrayList<>();
+        java.util.HashSet<Integer> seenPages = new java.util.HashSet<>();
+        try {
+            String[] parts = orderText.split(",");
+            if (parts.length == 0 || parts.length > 500) throw new IllegalArgumentException();
+            for (String part : parts) {
+                int pageNumber = Integer.parseInt(part.trim());
+                if (pageNumber < 1 || !seenPages.add(pageNumber)) throw new IllegalArgumentException();
+                requestedPages.add(pageNumber);
+            }
+        } catch (Exception e) {
+            Toast.makeText(this, "Enter unique page numbers like 3,1,2.", Toast.LENGTH_LONG).show();
+            return;
+        }
+        Toast.makeText(this, "Preparing reordered PDF copy…", Toast.LENGTH_SHORT).show();
+        new Thread(() -> {
+            File temp = null;
+            try (ParcelFileDescriptor descriptor = getContentResolver().openFileDescriptor(source, "r")) {
+                if (descriptor == null) throw new IllegalStateException("PDF source is unavailable");
+                temp = File.createTempFile("myoffice_reordered_", ".pdf", getCacheDir());
+                try (PdfRenderer renderer = new PdfRenderer(descriptor);
+                     FileOutputStream stream = new FileOutputStream(temp)) {
+                    int count = renderer.getPageCount();
+                    if (count <= 0 || count > 500) throw new IllegalStateException("PDF must contain between 1 and 500 pages");
+                    for (Integer pageNumber : requestedPages) {
+                        if (pageNumber > count) throw new IllegalArgumentException("Page " + pageNumber + " is outside this PDF");
+                    }
+                    PdfDocument output = new PdfDocument();
+                    try {
+                        int outputNumber = 1;
+                        for (Integer pageNumber : requestedPages) {
+                            try (PdfRenderer.Page page = renderer.openPage(pageNumber - 1)) {
+                                float scale = Math.min(1.5f, Math.min(1400f / page.getWidth(), 1800f / page.getHeight()));
+                                int width = Math.max(1, Math.round(page.getWidth() * scale));
+                                int height = Math.max(1, Math.round(page.getHeight() * scale));
+                                Bitmap bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888);
+                                page.render(bitmap, null, null, PdfRenderer.Page.RENDER_MODE_FOR_DISPLAY);
+                                if (rotationDegrees != 0) {
+                                    Matrix matrix = new Matrix();
+                                    matrix.postRotate(rotationDegrees);
+                                    Bitmap rotated = Bitmap.createBitmap(bitmap, 0, 0, bitmap.getWidth(), bitmap.getHeight(), matrix, true);
+                                    if (rotated != bitmap) bitmap.recycle();
+                                    bitmap = rotated;
+                                }
+                                PdfDocument.Page outputPage = output.startPage(
+                                        new PdfDocument.PageInfo.Builder(bitmap.getWidth(), bitmap.getHeight(), outputNumber++).create());
+                                outputPage.getCanvas().drawBitmap(bitmap, 0f, 0f, null);
+                                output.finishPage(outputPage);
+                                bitmap.recycle();
+                            }
+                        }
+                        output.writeTo(stream);
+                        stream.flush();
+                    } finally {
+                        output.close();
+                    }
+                }
+                File ready = temp;
+                runOnUiThread(() -> {
+                    if (isFinishing()) { ready.delete(); return; }
+                    pendingPdfFile = ready;
+                    Intent create = new Intent(Intent.ACTION_CREATE_DOCUMENT);
+                    create.addCategory(Intent.CATEGORY_OPENABLE);
+                    create.setType("application/pdf");
+                    String base = name.toLowerCase(Locale.ROOT).endsWith(".pdf") ? name.substring(0, name.length() - 4) : name;
+                    create.putExtra(Intent.EXTRA_TITLE, base + "_reordered.pdf");
+                    try { startActivityForResult(create, SAVE_PDF); }
+                    catch (Exception e) {
+                        ready.delete();
+                        pendingPdfFile = null;
+                        Toast.makeText(this, "Could not open the Save PDF picker.", Toast.LENGTH_LONG).show();
+                    }
+                });
+            } catch (Exception e) {
+                if (temp != null) temp.delete();
+                runOnUiThread(() -> Toast.makeText(this,
+                        e instanceof IllegalArgumentException ? e.getMessage() : "Could not reorder these PDF pages.",
+                        Toast.LENGTH_LONG).show());
+            }
+        }, "myoffice-pdf-reorder").start();
+    }
+
     private void exportEditedPdfCopy(Uri source, String name, int rotationDegrees, String watermarkText) {
         exportEditedPdfCopy(source, name, rotationDegrees, watermarkText, 1, Integer.MAX_VALUE);
     }
@@ -2593,6 +2676,23 @@ public final class MainActivity extends Activity {
         content.addView(action("Export rotated PDF copy", v -> exportEditedPdfCopy(uri, name, currentPdfRotationDegrees, "")));
         content.addView(action("Export current page as PNG", v -> exportPdfPageAsPng(uri, name, pageIndex[0], currentPdfRotationDegrees)));
         content.addView(action("Export all pages as PNG ZIP", v -> exportAllPdfPagesAsPngZip(uri, name, currentPdfRotationDegrees)));
+        content.addView(action("Reorder / select pages", v -> {
+            EditText orderInput = new EditText(this);
+            orderInput.setSingleLine(true);
+            orderInput.setHint("e.g. 3,1,2");
+            new AlertDialog.Builder(this).setTitle("Page order")
+                    .setMessage("Enter page numbers in the desired output order, separated by commas. Example: 3,1,2. Duplicate page numbers are not allowed.")
+                    .setView(orderInput)
+                    .setNegativeButton("Cancel", (dialog, which) -> dialog.dismiss())
+                    .setPositiveButton("Export reordered copy", (dialog, which) -> {
+                        String order = orderInput.getText().toString().trim();
+                        if (order.isEmpty()) {
+                            Toast.makeText(this, "Enter page numbers first.", Toast.LENGTH_SHORT).show();
+                            return;
+                        }
+                        exportPdfPagesInOrder(uri, name, currentPdfRotationDegrees, order);
+                    }).show();
+        }));
         content.addView(action("Extract pages to new PDF", v -> {
             LinearLayout rangeFields = new LinearLayout(this);
             rangeFields.setOrientation(LinearLayout.VERTICAL);
