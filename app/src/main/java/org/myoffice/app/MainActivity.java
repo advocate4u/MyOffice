@@ -951,7 +951,9 @@ public final class MainActivity extends Activity {
         pdfHorizontal.setFillViewport(true);
         pdfHorizontal.addView(pageImage, new HorizontalScrollView.LayoutParams(-2, -2));
         content.addView(pdfHorizontal, new LinearLayout.LayoutParams(-1, dp(520)));
-        int[] pageIndex = new int[]{0};
+        SharedPreferences pdfPositions = getSharedPreferences("myoffice_pdf_positions", MODE_PRIVATE);
+        String pdfPositionKey = uri.toString();
+        int[] pageIndex = new int[]{Math.max(0, pdfPositions.getInt(pdfPositionKey, 0))};
         float[] zoomLevel = new float[]{1.0f};
         EditText pageInput = new EditText(this);
         pageInput.setSingleLine(true);
@@ -1021,7 +1023,7 @@ public final class MainActivity extends Activity {
         ScrollView scroll = new ScrollView(this);
         scroll.addView(content);
         setContentView(scroll);
-        renderPdfPage(uri, 0, pageImage, pageLabel, pageInput, previous, next, pageIndex, zoomLevel);
+        renderPdfPage(uri, pageIndex[0], pageImage, pageLabel, pageInput, previous, next, pageIndex, zoomLevel);
     }
 
     private final Button[] previousRef = new Button[1];
@@ -1048,6 +1050,8 @@ public final class MainActivity extends Activity {
                     image.setImageBitmap(bitmap);
                     image.setTag(bitmap);
                     pageIndex[0] = index;
+                    getSharedPreferences("myoffice_pdf_positions", MODE_PRIVATE)
+                            .edit().putInt(uri.toString(), index).apply();
                     pageInput.setText(String.valueOf(index + 1));
                     pageLabel.setText("Page " + (index + 1) + " of " + pageCount);
                     previous.setEnabled(index > 0);
