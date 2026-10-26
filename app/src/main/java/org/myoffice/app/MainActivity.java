@@ -1126,6 +1126,13 @@ public final class MainActivity extends Activity {
                     .putInt(uri.toString(), currentPdfRotationDegrees).apply();
             renderPdfPage(uri, pageIndex[0], pageImage, pageLabel, pageInput, previousRef[0], nextRef[0], pageIndex, zoomLevel);
         }));
+        content.addView(action("Reset rotation", v -> {
+            currentPdfRotationDegrees = 0;
+            getSharedPreferences("myoffice_pdf_rotations", MODE_PRIVATE).edit()
+                    .putInt(uri.toString(), 0).apply();
+            renderPdfPage(uri, pageIndex[0], pageImage, pageLabel, pageInput, previousRef[0], nextRef[0], pageIndex, zoomLevel);
+            Toast.makeText(this, "PDF view reset to 0°.", Toast.LENGTH_SHORT).show();
+        }));
         LinearLayout navigation = new LinearLayout(this);
         navigation.setOrientation(LinearLayout.HORIZONTAL);
         Button previous = action("Previous page", v -> {
