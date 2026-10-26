@@ -16,7 +16,9 @@ import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.ImageView;
+import android.widget.HorizontalScrollView;
 import android.widget.LinearLayout;
+import android.widget.TableLayout;
 import android.widget.ScrollView;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -43,6 +45,9 @@ public final class MainActivity extends Activity {
     private LinearLayout recentList;
     private SharedPreferences prefs;
     private final ArrayList<String> recentUris = new ArrayList<>();
+    private ArrayList<ArrayList<EditText>> sheetCells = new ArrayList<>();
+    private File currentCsvFile;
+    private String sheetOriginalSnapshot = "";
 
     @Override public void onCreate(Bundle state) {
         super.onCreate(state);
@@ -94,6 +99,7 @@ public final class MainActivity extends Activity {
         page.addView(action("＋  Create a note (offline)", v -> showNoteEditor(null, "", "")));
         page.addView(action("My notes", v -> showNotes()));
         page.addView(action("Writer: text documents", v -> showWriterList()));
+        page.addView(action("Spreadsheet: CSV sheets", v -> showSpreadsheetList()));
         page.addView(action("Refresh recent files", v -> { loadRecents(); showHome(); }));
         page.addView(gap(12));
         page.addView(label("Recent files", 21, true));
@@ -605,6 +611,236 @@ public final class MainActivity extends Activity {
                         .setNegativeButton("Keep editing", (dialog, which) -> dialog.dismiss())
                         .setNeutralButton("Discard", (dialog, which) -> showWriterList())
                         .setPositiveButton("Save", (dialog, which) -> saveWriterFile(existing, body.getText().toString()))
+                        .show();
+            }
+        });
+        ScrollView scroll = new ScrollView(this);
+        scroll.addView(content);
+        setContentView(scroll);
+    }
+
+
+    // First Spreadsheet milestone: editable CSV grid, stored locally as UTF-8 CSV.
+    private File spreadsheetDirectory() {
+        File dir = new File(getFilesDir(), "spreadsheets");
+        if (!dir.exists()) dir.mkdirs();
+        return dir;
+    }
+
+    private File[] csvFiles() {
+        File[] files = spreadsheetDirectory().listFiles((dir, name) -> name.endsWith(".csv"));
+        if (files == null) return new File[0];
+        Arrays.sort(files, Comparator.comparingLong(File::lastModified).reversed());
+        return files;
+    }
+
+    private String readCsvFile(File file) throws Exception {
+        try (InputStream in = new FileInputStream(file);
+             ByteArrayOutputStream out = new ByteArrayOutputStream()) {
+            byte[] buffer = new byte[8192];
+            int count;
+            while ((count = in.read(buffer)) != -1) out.write(buffer, 0, count);
+            return out.toString("UTF-8");
+        }
+    }
+
+    private ArrayList<ArrayList<String>> parseCsv(String text) {
+        ArrayList<ArrayList<String>> rows = new ArrayList<>();
+        ArrayList<String> row = new ArrayList<>();
+        StringBuilder field = new StringBuilder();
+        boolean quoted = false;
+        for (int i = 0; i < text.length(); i++) {
+            char ch = text.charAt(i);
+            if (ch == '"') {
+                if (quoted && i + 1 < text.length() && text.charAt(i + 1) == '"') {
+                    field.append('"');
+                    i++;
+                } else if (quoted) {
+                    quoted = false;
+                } else if (field.length() == 0) {
+                    quoted = true;
+                } else {
+                    field.append(ch);
+                }
+            } else if (ch == ',' && !quoted) {
+                row.add(field.toString());
+                field.setLength(0);
+            } else if ((ch == '\n' || ch == '\r') && !quoted) {
+                if (ch == '\r' && i + 1 < text.length() && text.charAt(i + 1) == '\n') i++;
+                row.add(field.toString());
+                field.setLength(0);
+                rows.add(row);
+                row = new ArrayList<>();
+            } else {
+                field.append(ch);
+            }
+        }
+        if (field.length() > 0 || !row.isEmpty() || rows.isEmpty()) {
+            row.add(field.toString());
+            rows.add(row);
+        }
+        int maxColumns = 1;
+        for (ArrayList<String> r : rows) maxColumns = Math.max(maxColumns, r.size());
+        for (ArrayList<String> r : rows) while (r.size() < maxColumns) r.add("");
+        return rows;
+    }
+
+    private String csvEscape(String value) {
+        if (value.contains(",") || value.contains("\"") || value.contains("\n") || value.contains("\r")) {
+            return "\"" + value.replace("\"", "\"\"") + "\"";
+        }
+        return value;
+    }
+
+    private void showSpreadsheetList() {
+        LinearLayout content = column();
+        TextView back = label("‹  Back to MyOffice", 16, true);
+        back.setOnClickListener(v -> showHome());
+        content.addView(back);
+        content.addView(label("Spreadsheet · CSV", 26, true));
+        content.addView(label("Edit rows and columns offline. CSV is supported; formulas and XLSX are not included yet.", 13, false));
+        content.addView(action("＋  New CSV sheet", v -> {
+            ArrayList<ArrayList<String>> blank = new ArrayList<>();
+            for (int r = 0; r < 4; r++) {
+                ArrayList<String> row = new ArrayList<>();
+                for (int col = 0; col < 4; col++) row.add("");
+                blank.add(row);
+            }
+            showSpreadsheetEditor(null, blank, true);
+        }));
+        File[] files = csvFiles();
+        if (files.length == 0) {
+            content.addView(gap(12));
+            content.addView(label("No CSV sheets yet.", 15, false));
+        } else {
+            for (File file : files) {
+                String preview = "";
+                try { preview = readCsvFile(file).split("\\R", 2)[0]; } catch (Exception ignored) { }
+                final File selected = file;
+                LinearLayout card = new LinearLayout(this);
+                card.setOrientation(LinearLayout.VERTICAL);
+                card.setPadding(dp(12), dp(8), dp(12), dp(8));
+                card.setBackgroundColor(0xFFFFFFFF);
+                LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(-1, -2);
+                params.setMargins(0, dp(5), 0, dp(5));
+                content.addView(card, params);
+                card.addView(label(file.getName(), 17, true));
+                card.addView(label(preview.isEmpty() ? "Empty sheet" : preview, 13, false));
+                card.addView(label("Modified " + DateFormat.getDateTimeInstance().format(new Date(file.lastModified())), 11, false));
+                card.setOnClickListener(v -> {
+                    try { showSpreadsheetEditor(selected, parseCsv(readCsvFile(selected)), true); }
+                    catch (Exception e) { Toast.makeText(this, "Could not open this CSV file.", Toast.LENGTH_LONG).show(); }
+                });
+            }
+        }
+        ScrollView scroll = new ScrollView(this);
+        scroll.addView(content);
+        setContentView(scroll);
+    }
+
+    private ArrayList<ArrayList<String>> readSheetCells() {
+        ArrayList<ArrayList<String>> data = new ArrayList<>();
+        for (ArrayList<EditText> row : sheetCells) {
+            ArrayList<String> values = new ArrayList<>();
+            for (EditText cell : row) values.add(cell.getText().toString());
+            data.add(values);
+        }
+        return data;
+    }
+
+    private String serializeSheet(ArrayList<ArrayList<String>> data) {
+        StringBuilder out = new StringBuilder();
+        for (int r = 0; r < data.size(); r++) {
+            ArrayList<String> row = data.get(r);
+            for (int col = 0; col < row.size(); col++) {
+                if (col > 0) out.append(',');
+                out.append(csvEscape(row.get(col)));
+            }
+            if (r < data.size() - 1) out.append("\r\n");
+        }
+        return out.toString();
+    }
+
+    private void saveSpreadsheet() {
+        String csv = serializeSheet(readSheetCells());
+        File target = currentCsvFile;
+        if (target == null) target = new File(spreadsheetDirectory(), "sheet_" + System.currentTimeMillis() + ".csv");
+        try (OutputStreamWriter writer = new OutputStreamWriter(new FileOutputStream(target), "UTF-8")) {
+            writer.write(csv);
+            writer.flush();
+            Toast.makeText(this, "CSV sheet saved on this device.", Toast.LENGTH_SHORT).show();
+            showSpreadsheetList();
+        } catch (Exception e) {
+            Toast.makeText(this, "Could not save CSV sheet. Check available storage.", Toast.LENGTH_LONG).show();
+        }
+    }
+
+    private void showSpreadsheetEditor(File existing, ArrayList<ArrayList<String>> data, boolean resetOriginal) {
+        currentCsvFile = existing;
+        LinearLayout content = column();
+        TextView back = label("‹  Back to Spreadsheet", 16, true);
+        content.addView(back);
+        content.addView(label("CSV sheet editor", 23, true));
+        content.addView(label("Tap a cell to edit it. Add rows/columns as needed, then save. No formulas yet.", 13, false));
+        LinearLayout tools = new LinearLayout(this);
+        tools.setOrientation(LinearLayout.HORIZONTAL);
+        tools.addView(action("+ Row", v -> {
+            ArrayList<ArrayList<String>> current = readSheetCells();
+            int columns = current.isEmpty() ? 1 : current.get(0).size();
+            ArrayList<String> row = new ArrayList<>();
+            for (int i = 0; i < columns; i++) row.add("");
+            current.add(row);
+            showSpreadsheetEditor(currentCsvFile, current, false);
+        }), new LinearLayout.LayoutParams(0, -2, 1));
+        tools.addView(action("+ Column", v -> {
+            ArrayList<ArrayList<String>> current = readSheetCells();
+            for (ArrayList<String> row : current) row.add("");
+            showSpreadsheetEditor(currentCsvFile, current, false);
+        }), new LinearLayout.LayoutParams(0, -2, 1));
+        content.addView(tools);
+        LinearLayout grid = new LinearLayout(this);
+        grid.setOrientation(LinearLayout.VERTICAL);
+        sheetCells = new ArrayList<>();
+        for (int r = 0; r < data.size(); r++) {
+            LinearLayout rowView = new LinearLayout(this);
+            rowView.setOrientation(LinearLayout.HORIZONTAL);
+            ArrayList<EditText> cellRow = new ArrayList<>();
+            for (int col = 0; col < data.get(r).size(); col++) {
+                EditText cell = new EditText(this);
+                cell.setSingleLine(true);
+                cell.setTextSize(14);
+                cell.setPadding(dp(6), dp(4), dp(6), dp(4));
+                cell.setHint("R" + (r + 1) + "C" + (col + 1));
+                cell.setText(data.get(r).get(col));
+                LinearLayout.LayoutParams cellParams = new LinearLayout.LayoutParams(dp(124), dp(52));
+                cellParams.setMargins(dp(1), dp(1), dp(1), dp(1));
+                rowView.addView(cell, cellParams);
+                cellRow.add(cell);
+            }
+            grid.addView(rowView);
+            sheetCells.add(cellRow);
+        }
+        HorizontalScrollView horizontal = new HorizontalScrollView(this);
+        horizontal.addView(grid);
+        content.addView(horizontal, new LinearLayout.LayoutParams(-1, -2));
+        content.addView(action("Save CSV sheet", v -> saveSpreadsheet()));
+        content.addView(action("Discard changes", v -> new AlertDialog.Builder(this)
+                .setTitle("Discard this sheet edit?")
+                .setMessage("Unsaved changes will be lost.")
+                .setNegativeButton("Keep editing", (dialog, which) -> dialog.dismiss())
+                .setPositiveButton("Discard", (dialog, which) -> showSpreadsheetList())
+                .show()));
+        if (resetOriginal) sheetOriginalSnapshot = serializeSheet(data);
+        back.setOnClickListener(v -> {
+            if (serializeSheet(readSheetCells()).equals(sheetOriginalSnapshot)) {
+                showSpreadsheetList();
+            } else {
+                new AlertDialog.Builder(this)
+                        .setTitle("Unsaved changes")
+                        .setMessage("Save this CSV sheet before leaving?")
+                        .setNegativeButton("Keep editing", (dialog, which) -> dialog.dismiss())
+                        .setNeutralButton("Discard", (dialog, which) -> showSpreadsheetList())
+                        .setPositiveButton("Save", (dialog, which) -> saveSpreadsheet())
                         .show();
             }
         });
