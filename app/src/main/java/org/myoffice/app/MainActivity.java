@@ -815,42 +815,64 @@ public final class MainActivity extends Activity {
         content.addView(label("My notes", 26, true));
         content.addView(label("Saved locally on this device. Notes remain available offline.", 14, false));
         content.addView(action("＋  Create a note", v -> showNoteEditor(null, "", "")));
-        File[] files = noteFiles();
-        if (files.length == 0) {
-            content.addView(gap(12));
-            content.addView(label("No notes yet. Create a note to start learning or writing.", 15, false));
-        } else {
-            for (File file : files) {
-                String[] data;
-                try { data = readNote(file); }
-                catch (Exception e) { data = new String[]{file.getName(), "Could not read this note"}; }
-                final File selected = file;
-                LinearLayout card = new LinearLayout(this);
-                card.setOrientation(LinearLayout.VERTICAL);
-                card.setPadding(dp(12), dp(8), dp(12), dp(8));
-                card.setBackgroundColor(0xFFFFFFFF);
-                LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(-1, -2);
-                params.setMargins(0, dp(5), 0, dp(5));
-                content.addView(card, params);
-                card.addView(label(data[0].isEmpty() ? "Untitled note" : data[0], 17, true));
-                String preview = data[1].replace('\n', ' ').trim();
-                if (preview.length() > 100) preview = preview.substring(0, 100) + "…";
-                card.addView(label(preview.isEmpty() ? "Empty note" : preview, 13, false));
-                card.addView(label("Modified " + DateFormat.getDateTimeInstance().format(new Date(file.lastModified())), 11, false));
-                card.addView(action("Delete note", v -> confirmDeleteFile(selected, "note", () -> showNotes())));
-                card.setOnClickListener(v -> {
-                    try {
-                        String[] note = readNote(selected);
-                        showNoteEditor(selected, note[0], note[1]);
-                    } catch (Exception e) {
-                        Toast.makeText(this, "Could not open this note.", Toast.LENGTH_LONG).show();
-                    }
-                });
-            }
-        }
+        EditText noteSearch = new EditText(this);
+        noteSearch.setSingleLine(true);
+        noteSearch.setHint("Search notes by title or content");
+        content.addView(noteSearch);
+        LinearLayout noteResults = new LinearLayout(this);
+        noteResults.setOrientation(LinearLayout.VERTICAL);
+        content.addView(noteResults);
+        noteSearch.addTextChangedListener(new TextWatcher() {
+            @Override public void beforeTextChanged(CharSequence s, int start, int count, int after) { }
+            @Override public void onTextChanged(CharSequence s, int start, int before, int count) { renderNoteResults(noteResults, s.toString()); }
+            @Override public void afterTextChanged(Editable s) { }
+        });
+        renderNoteResults(noteResults, "");
+
         ScrollView scroll = new ScrollView(this);
         scroll.addView(content);
         setContentView(scroll);
+    }
+
+    private void renderNoteResults(LinearLayout results, String queryText) {
+        results.removeAllViews();
+        File[] files = noteFiles();
+        String query = queryText == null ? "" : queryText.trim().toLowerCase(Locale.ROOT);
+        int shown = 0;
+        for (File file : files) {
+            String[] data;
+            try { data = readNote(file); }
+            catch (Exception e) { data = new String[]{file.getName(), "Could not read this note"}; }
+            String title = data[0].isEmpty() ? "Untitled note" : data[0];
+            String preview = data[1].replace('\n', ' ').trim();
+            String searchable = (title + " " + preview + " " + file.getName()).toLowerCase(Locale.ROOT);
+            if (!query.isEmpty() && !searchable.contains(query)) continue;
+            shown++;
+            if (preview.length() > 100) preview = preview.substring(0, 100) + "…";
+            final File selected = file;
+            LinearLayout card = new LinearLayout(this);
+            card.setOrientation(LinearLayout.VERTICAL);
+            card.setPadding(dp(12), dp(8), dp(12), dp(8));
+            card.setBackgroundColor(0xFFFFFFFF);
+            LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(-1, -2);
+            params.setMargins(0, dp(5), 0, dp(5));
+            results.addView(card, params);
+            card.addView(label(title, 17, true));
+            card.addView(label(preview.isEmpty() ? "Empty note" : preview, 13, false));
+            card.addView(label("Modified " + DateFormat.getDateTimeInstance().format(new Date(file.lastModified())), 11, false));
+            card.addView(action("Delete note", v -> confirmDeleteFile(selected, "note", () -> showNotes())));
+            card.setOnClickListener(v -> {
+                try {
+                    String[] note = readNote(selected);
+                    showNoteEditor(selected, note[0], note[1]);
+                } catch (Exception e) {
+                    Toast.makeText(this, "Could not open this note.", Toast.LENGTH_LONG).show();
+                }
+            });
+        }
+        if (shown == 0) results.addView(label(query.isEmpty()
+                ? "No notes yet. Create a note to start learning or writing."
+                : "No notes match your search.", 15, false));
     }
 
     private void showNoteEditor(File existing, String initialTitle, String initialBody) {
