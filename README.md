@@ -87,7 +87,8 @@ An original Android office and learning app focused on free, offline-first use, 
 - DOCX list import (feature F72): read common bullet and decimal numbering definitions and prefix imported paragraphs with editable bullet/number text. Advanced list restarts, multilevel formats and true Word list semantics are not preserved.
 - DOCX table text import (feature F73): preserve table cell text as tab-separated rows when importing DOCX into Writer, so simple table content remains readable/editable. Tables are flattened to text, not editable grid objects.
 - RTF import/export (feature F74): import basic text, paragraph breaks, tabs, common symbols and Unicode escapes from RTF into Writer; export Writer text as a valid basic RTF document.
-- RTF character formatting import (feature F75): preserve common bold, italic, underline, strikethrough and font-size controls from RTF as Writer spans. Color tables, paragraph styles, images, tables and formatting-preserving RTF export remain unsupported.
+- RTF character formatting import (feature F75): preserve common bold, italic, underline, strikethrough and font-size controls from RTF as Writer spans. Color tables, paragraph styles, images and tables remain unsupported.
+- RTF formatting export (feature F76): write supported Writer bold/italic/underline/strikethrough and relative font-size spans into RTF character groups; color tables, paragraph formatting and full RTF fidelity are not yet supported.
 - DOCX export (feature F19): export Writer plain text as a minimal WordprocessingML DOCX package through Android's Save document picker.
 - DOCX formatted export (feature F64): export Writer rich-text runs with bold, italic, underline, strikethrough, text color, highlight and relative font size, plus the current left/center/right paragraph alignment. This is a focused compatibility subset, not full Word fidelity.
 - Arithmetic formula preview (feature F20): preview `=A1+B1`, subtraction, multiplication and division using numeric cell references, alongside the aggregate formulas from F16.
@@ -173,6 +174,7 @@ The uploaded APK has not yet been run through REA/JADX in this environment becau
 - [F73 DOCX table text import test plan](docs/testing/F73-docx-table-text-import-test-plan.md)
 - [F74 RTF import/export test plan](docs/testing/F74-rtf-import-export-test-plan.md)
 - [F75 RTF formatting import test plan](docs/testing/F75-rtf-formatting-import-test-plan.md)
+- [F76 RTF formatting export test plan](docs/testing/F76-rtf-formatting-export-test-plan.md)
 - [F14 Text import test plan](docs/testing/F14-text-import-test-plan.md)
 - [F15 Find-in-text test plan](docs/testing/F15-find-in-text-test-plan.md)
 - [F16 Formula preview test plan](docs/testing/F16-formula-preview-test-plan.md)
