@@ -1223,34 +1223,38 @@ public final class MainActivity extends Activity {
                 if (descriptor == null) throw new IllegalStateException("PDF source is unavailable");
                 temp = File.createTempFile("myoffice_rotated_", ".pdf", getCacheDir());
                 try (PdfRenderer renderer = new PdfRenderer(descriptor);
-                     PdfDocument output = new PdfDocument();
                      FileOutputStream stream = new FileOutputStream(temp)) {
-                    int count = renderer.getPageCount();
-                    if (count <= 0) throw new IllegalStateException("PDF has no pages");
-                    if (count > 500) throw new IllegalStateException("This PDF has over 500 pages; export a smaller document");
-                    for (int i = 0; i < count; i++) {
-                        try (PdfRenderer.Page page = renderer.openPage(i)) {
-                            float scale = Math.min(1.5f, Math.min(1400f / page.getWidth(), 1800f / page.getHeight()));
-                            int width = Math.max(1, Math.round(page.getWidth() * scale));
-                            int height = Math.max(1, Math.round(page.getHeight() * scale));
-                            Bitmap bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888);
-                            page.render(bitmap, null, null, PdfRenderer.Page.RENDER_MODE_FOR_DISPLAY);
-                            if (rotationDegrees != 0) {
-                                Matrix matrix = new Matrix();
-                                matrix.postRotate(rotationDegrees);
-                                Bitmap rotated = Bitmap.createBitmap(bitmap, 0, 0, bitmap.getWidth(), bitmap.getHeight(), matrix, true);
-                                if (rotated != bitmap) bitmap.recycle();
-                                bitmap = rotated;
+                    PdfDocument output = new PdfDocument();
+                    try {
+                        int count = renderer.getPageCount();
+                        if (count <= 0) throw new IllegalStateException("PDF has no pages");
+                        if (count > 500) throw new IllegalStateException("This PDF has over 500 pages; export a smaller document");
+                        for (int i = 0; i < count; i++) {
+                            try (PdfRenderer.Page page = renderer.openPage(i)) {
+                                float scale = Math.min(1.5f, Math.min(1400f / page.getWidth(), 1800f / page.getHeight()));
+                                int width = Math.max(1, Math.round(page.getWidth() * scale));
+                                int height = Math.max(1, Math.round(page.getHeight() * scale));
+                                Bitmap bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888);
+                                page.render(bitmap, null, null, PdfRenderer.Page.RENDER_MODE_FOR_DISPLAY);
+                                if (rotationDegrees != 0) {
+                                    Matrix matrix = new Matrix();
+                                    matrix.postRotate(rotationDegrees);
+                                    Bitmap rotated = Bitmap.createBitmap(bitmap, 0, 0, bitmap.getWidth(), bitmap.getHeight(), matrix, true);
+                                    if (rotated != bitmap) bitmap.recycle();
+                                    bitmap = rotated;
+                                }
+                                PdfDocument.Page outputPage = output.startPage(
+                                        new PdfDocument.PageInfo.Builder(bitmap.getWidth(), bitmap.getHeight(), i + 1).create());
+                                outputPage.getCanvas().drawBitmap(bitmap, 0f, 0f, null);
+                                output.finishPage(outputPage);
+                                bitmap.recycle();
                             }
-                            PdfDocument.Page outputPage = output.startPage(
-                                    new PdfDocument.PageInfo.Builder(bitmap.getWidth(), bitmap.getHeight(), i + 1).create());
-                            outputPage.getCanvas().drawBitmap(bitmap, 0f, 0f, null);
-                            output.finishPage(outputPage);
-                            bitmap.recycle();
                         }
+                        output.writeTo(stream);
+                        stream.flush();
+                    } finally {
+                        output.close();
                     }
-                    output.writeTo(stream);
-                    stream.flush();
                 }
                 File ready = temp;
                 runOnUiThread(() -> {
