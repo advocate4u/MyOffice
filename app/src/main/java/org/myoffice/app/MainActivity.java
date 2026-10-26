@@ -2122,12 +2122,28 @@ public final class MainActivity extends Activity {
                                 if (watermarkText != null && !watermarkText.trim().isEmpty() && (annotationPageIndex < 0 || i == annotationPageIndex)) {
                                     Paint stampPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
                                     boolean typedSignature = watermarkText.startsWith("SIGNATURE:");
-                                    String stampText = typedSignature ? watermarkText.substring("SIGNATURE:".length()).trim() : watermarkText.trim();
-                                    stampPaint.setColor(typedSignature ? 0xFF183A73 : 0x99D32F2F);
+                                    boolean checkmark = watermarkText.startsWith("CHECKMARK:");
+                                    String stampText = typedSignature ? watermarkText.substring("SIGNATURE:".length()).trim()
+                                            : checkmark ? "" : watermarkText.trim();
+                                    stampPaint.setColor(typedSignature ? 0xFF183A73 : checkmark ? 0xFF188038 : 0x99D32F2F);
                                     stampPaint.setTextSize(Math.max(typedSignature ? 30f : 26f, bitmap.getWidth() * (typedSignature ? 0.052f : 0.045f)));
                                     stampPaint.setTextAlign(typedSignature ? Paint.Align.LEFT : Paint.Align.CENTER);
                                     stampPaint.setTypeface(Typeface.create(Typeface.DEFAULT, typedSignature ? Typeface.ITALIC : Typeface.BOLD));
-                                    if (typedSignature) {
+                                    if (checkmark) {
+                                        Paint markPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+                                        markPaint.setColor(0xFF188038);
+                                        markPaint.setStyle(Paint.Style.STROKE);
+                                        markPaint.setStrokeCap(Paint.Cap.ROUND);
+                                        markPaint.setStrokeJoin(Paint.Join.ROUND);
+                                        markPaint.setStrokeWidth(Math.max(8f, bitmap.getWidth() * 0.012f));
+                                        float x = bitmap.getWidth() * 0.72f;
+                                        float y = bitmap.getHeight() * 0.78f;
+                                        outputPage.getCanvas().drawLine(x, y, x + bitmap.getWidth() * 0.055f,
+                                                y + bitmap.getHeight() * 0.035f, markPaint);
+                                        outputPage.getCanvas().drawLine(x + bitmap.getWidth() * 0.055f,
+                                                y + bitmap.getHeight() * 0.035f, x + bitmap.getWidth() * 0.16f,
+                                                y - bitmap.getHeight() * 0.10f, markPaint);
+                                    } else if (typedSignature) {
                                         float left = bitmap.getWidth() * 0.10f;
                                         float baseline = bitmap.getHeight() * 0.88f;
                                         outputPage.getCanvas().drawText(stampText, left, baseline, stampPaint);
@@ -2357,6 +2373,13 @@ public final class MainActivity extends Activity {
                                 1, Integer.MAX_VALUE, pageIndex[0]);
                     }).show();
         }));
+        content.addView(action("Fill form · Add checkmark", v -> new AlertDialog.Builder(this)
+                .setTitle("Add checkmark to page " + (pageIndex[0] + 1) + "?")
+                .setMessage("Adds a green checkmark near the lower-right of the current page in a new flattened PDF copy. The original stays unchanged.")
+                .setNegativeButton("Cancel", (dialog, which) -> dialog.dismiss())
+                .setPositiveButton("Create checked copy", (dialog, which) ->
+                        exportEditedPdfCopy(uri, name, currentPdfRotationDegrees, "CHECKMARK:",
+                                1, Integer.MAX_VALUE, pageIndex[0])).show()));
         LinearLayout navigation = new LinearLayout(this);
         navigation.setOrientation(LinearLayout.HORIZONTAL);
         Button previous = action("Previous page", v -> {
