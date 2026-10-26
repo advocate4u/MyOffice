@@ -1,6 +1,7 @@
 package org.myoffice.app;
 
 import android.app.Activity;
+import android.app.AlertDialog;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.database.Cursor;
@@ -10,15 +11,22 @@ import android.provider.OpenableColumns;
 import android.view.Gravity;
 import android.view.View;
 import android.widget.Button;
+import android.widget.EditText;
 import android.widget.LinearLayout;
 import android.widget.ScrollView;
 import android.widget.TextView;
 import android.widget.Toast;
 import java.io.ByteArrayOutputStream;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
 import java.io.InputStream;
+import java.io.OutputStreamWriter;
 import java.text.DateFormat;
 import java.util.ArrayList;
 import java.util.Date;
+import java.util.Arrays;
+import java.util.Comparator;
 import java.util.Locale;
 
 public final class MainActivity extends Activity {
@@ -26,6 +34,7 @@ public final class MainActivity extends Activity {
     private static final String PREFS = "myoffice_recent";
     private static final String KEY = "uris";
     private static final int MAX_RECENTS = 12;
+    private static final String NOTE_PREFIX = "MYOFFICE_NOTE_TITLE:";
     private LinearLayout page;
     private LinearLayout recentList;
     private SharedPreferences prefs;
@@ -78,6 +87,8 @@ public final class MainActivity extends Activity {
         intro.setBackgroundColor(0xFFFFFFFF);
         page.addView(intro);
         page.addView(action("＋  Open a file", v -> openPicker()));
+        page.addView(action("＋  Create a note (offline)", v -> showNoteEditor(null, "", "")));
+        page.addView(action("My notes", v -> showNotes()));
         page.addView(action("Refresh recent files", v -> { loadRecents(); showHome(); }));
         page.addView(gap(12));
         page.addView(label("Recent files", 21, true));
@@ -230,6 +241,156 @@ public final class MainActivity extends Activity {
             try { startActivity(Intent.createChooser(view, "Open file with")); }
             catch (Exception e) { Toast.makeText(this, "No compatible app was found.", Toast.LENGTH_LONG).show(); }
         }));
+        ScrollView scroll = new ScrollView(this);
+        scroll.addView(content);
+        setContentView(scroll);
+    }
+
+
+    // Notes are stored only in this app's private files directory; no account or network is needed.
+    private File notesDirectory() {
+        File dir = new File(getFilesDir(), "notes");
+        if (!dir.exists()) dir.mkdirs();
+        return dir;
+    }
+
+    private File[] noteFiles() {
+        File[] files = notesDirectory().listFiles((dir, name) -> name.endsWith(".note"));
+        if (files == null) return new File[0];
+        Arrays.sort(files, Comparator.comparingLong(File::lastModified).reversed());
+        return files;
+    }
+
+    private String[] readNote(File file) throws Exception {
+        try (InputStream in = new FileInputStream(file);
+             ByteArrayOutputStream out = new ByteArrayOutputStream()) {
+            byte[] buffer = new byte[4096];
+            int count;
+            while ((count = in.read(buffer)) != -1) out.write(buffer, 0, count);
+            String raw = out.toString("UTF-8");
+            int newline = raw.indexOf('\n');
+            String first = newline < 0 ? raw : raw.substring(0, newline);
+            String title = first.startsWith(NOTE_PREFIX) ? first.substring(NOTE_PREFIX.length()) : file.getName();
+            String body = newline < 0 ? "" : raw.substring(newline + 1);
+            if (body.startsWith("\n")) body = body.substring(1);
+            return new String[]{title, body};
+        }
+    }
+
+    private void showNotes() {
+        LinearLayout content = column();
+        TextView back = label("‹  Back to MyOffice", 16, true);
+        content.addView(back);
+        back.setOnClickListener(v -> showHome());
+        content.addView(label("My notes", 26, true));
+        content.addView(label("Saved locally on this device. Notes remain available offline.", 14, false));
+        content.addView(action("＋  Create a note", v -> showNoteEditor(null, "", "")));
+        File[] files = noteFiles();
+        if (files.length == 0) {
+            content.addView(gap(12));
+            content.addView(label("No notes yet. Create a note to start learning or writing.", 15, false));
+        } else {
+            for (File file : files) {
+                String[] data;
+                try { data = readNote(file); }
+                catch (Exception e) { data = new String[]{file.getName(), "Could not read this note"}; }
+                final File selected = file;
+                LinearLayout card = new LinearLayout(this);
+                card.setOrientation(LinearLayout.VERTICAL);
+                card.setPadding(dp(12), dp(8), dp(12), dp(8));
+                card.setBackgroundColor(0xFFFFFFFF);
+                LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(-1, -2);
+                params.setMargins(0, dp(5), 0, dp(5));
+                content.addView(card, params);
+                card.addView(label(data[0].isEmpty() ? "Untitled note" : data[0], 17, true));
+                String preview = data[1].replace('\n', ' ').trim();
+                if (preview.length() > 100) preview = preview.substring(0, 100) + "…";
+                card.addView(label(preview.isEmpty() ? "Empty note" : preview, 13, false));
+                card.addView(label("Modified " + DateFormat.getDateTimeInstance().format(new Date(file.lastModified())), 11, false));
+                card.setOnClickListener(v -> {
+                    try {
+                        String[] note = readNote(selected);
+                        showNoteEditor(selected, note[0], note[1]);
+                    } catch (Exception e) {
+                        Toast.makeText(this, "Could not open this note.", Toast.LENGTH_LONG).show();
+                    }
+                });
+            }
+        }
+        ScrollView scroll = new ScrollView(this);
+        scroll.addView(content);
+        setContentView(scroll);
+    }
+
+    private void showNoteEditor(File existing, String initialTitle, String initialBody) {
+        LinearLayout content = column();
+        TextView back = label("‹  Back to notes", 16, true);
+        content.addView(back);
+        content.addView(label("Offline note editor", 24, true));
+        content.addView(label("Your writing stays on this device until you choose to share or export it.", 13, false));
+        content.addView(label("Title", 14, true));
+        EditText title = new EditText(this);
+        title.setSingleLine(true);
+        title.setHint("e.g. Science homework");
+        title.setText(initialTitle);
+        content.addView(title);
+        content.addView(label("Note", 14, true));
+        EditText body = new EditText(this);
+        body.setGravity(Gravity.TOP | Gravity.START);
+        body.setMinLines(12);
+        body.setHint("Write here… Hindi and English text are supported.");
+        body.setText(initialBody);
+        body.setInputType(android.text.InputType.TYPE_CLASS_TEXT
+                | android.text.InputType.TYPE_TEXT_FLAG_MULTI_LINE
+                | android.text.InputType.TYPE_TEXT_FLAG_CAP_SENTENCES);
+        content.addView(body, new LinearLayout.LayoutParams(-1, dp(280)));
+        content.addView(action("Save note", v -> {
+            String noteTitle = title.getText().toString().trim();
+            if (noteTitle.isEmpty()) noteTitle = "Untitled note";
+            File target = existing;
+            if (target == null) target = new File(notesDirectory(), "note_" + System.currentTimeMillis() + ".note");
+            try (OutputStreamWriter writer = new OutputStreamWriter(new FileOutputStream(target), "UTF-8")) {
+                writer.write(NOTE_PREFIX + noteTitle + "\n\n");
+                writer.write(body.getText().toString());
+                writer.flush();
+                Toast.makeText(this, "Note saved on this device.", Toast.LENGTH_SHORT).show();
+                showNotes();
+            } catch (Exception e) {
+                Toast.makeText(this, "Could not save note. Check available storage.", Toast.LENGTH_LONG).show();
+            }
+        }));
+        content.addView(action("Discard changes", v -> new AlertDialog.Builder(this)
+                .setTitle("Discard this edit?")
+                .setMessage("Unsaved changes will be lost.")
+                .setNegativeButton("Keep editing", (dialog, which) -> dialog.dismiss())
+                .setPositiveButton("Discard", (dialog, which) -> showNotes())
+                .show()));
+        back.setOnClickListener(v -> {
+            if (title.getText().toString().equals(initialTitle)
+                    && body.getText().toString().equals(initialBody)) {
+                showNotes();
+            } else {
+                new AlertDialog.Builder(this)
+                        .setTitle("Unsaved changes")
+                        .setMessage("Save this note before leaving?")
+                        .setNegativeButton("Keep editing", (dialog, which) -> dialog.dismiss())
+                        .setNeutralButton("Discard", (dialog, which) -> showNotes())
+                        .setPositiveButton("Save", (dialog, which) -> {
+                            String noteTitle = title.getText().toString().trim();
+                            if (noteTitle.isEmpty()) noteTitle = "Untitled note";
+                            File target = existing;
+                            if (target == null) target = new File(notesDirectory(), "note_" + System.currentTimeMillis() + ".note");
+                            try (OutputStreamWriter writer = new OutputStreamWriter(new FileOutputStream(target), "UTF-8")) {
+                                writer.write(NOTE_PREFIX + noteTitle + "\n\n");
+                                writer.write(body.getText().toString());
+                                writer.flush();
+                                showNotes();
+                            } catch (Exception e) {
+                                Toast.makeText(this, "Could not save note.", Toast.LENGTH_LONG).show();
+                            }
+                        }).show();
+            }
+        });
         ScrollView scroll = new ScrollView(this);
         scroll.addView(content);
         setContentView(scroll);
