@@ -31,6 +31,7 @@ An original Android office and learning app focused on free, offline-first use, 
 - Recent sorting (feature F22): cycle through newest-first, filename A–Z and largest-first ordering; search and remove-from-recents continue to work with the selected order.
 - Home shortcuts (feature F23): group note, Writer, spreadsheet, presentation and image-to-PDF entry points into compact two-column tiles while keeping Open a file prominent.
 - Spreadsheet back protection (feature F24): Android's system Back key uses the same save/discard/keep-editing prompt as the in-screen Back action when a CSV sheet has unsaved changes.
+- Recent type filters (feature F25): filter recent items to All, PDF, Text, CSV or common Office formats while retaining filename search and sorting.
 - Text import (feature F14): open a supported text file in preview and optionally edit a local copy in Writer, preserving the original source.
 - Find-in-text (feature F15): search a text preview case-insensitively and highlight matching phrases locally.
 - Formula preview (feature F16): calculate read-only SUM, AVERAGE, MIN, MAX and COUNT over simple cell ranges in the CSV grid, without changing stored formula text.
@@ -77,6 +78,7 @@ The uploaded APK has not yet been run through REA/JADX in this environment becau
 - [F22 Recent sorting test plan](docs/testing/F22-recent-sorting-test-plan.md)
 - [F23 Home shortcut tiles test plan](docs/testing/F23-home-shortcuts-test-plan.md)
 - [F24 Spreadsheet system Back test plan](docs/testing/F24-spreadsheet-system-back-test-plan.md)
+- [F25 Recent file-type filters test plan](docs/testing/F25-recent-file-filters-test-plan.md)
 - [F14 Text import test plan](docs/testing/F14-text-import-test-plan.md)
 - [F15 Find-in-text test plan](docs/testing/F15-find-in-text-test-plan.md)
 - [F16 Formula preview test plan](docs/testing/F16-formula-preview-test-plan.md)
