@@ -75,6 +75,8 @@ public final class MainActivity extends Activity {
     private EditText recentSearchInput;
     private Button recentSortButton;
     private int recentSortMode = 0;
+    private int recentFilterMode = 0;
+    private final ArrayList<Button> recentFilterButtons = new ArrayList<>();
     private SharedPreferences prefs;
     private final ArrayList<String> recentUris = new ArrayList<>();
     private ArrayList<ArrayList<EditText>> sheetCells = new ArrayList<>();
@@ -165,6 +167,22 @@ public final class MainActivity extends Activity {
             renderRecents();
         });
         page.addView(recentSortButton);
+        LinearLayout filters = new LinearLayout(this);
+        filters.setOrientation(LinearLayout.HORIZONTAL);
+        recentFilterButtons.clear();
+        String[] filterLabels = {"All", "PDF", "Text", "CSV", "Office"};
+        for (int i = 0; i < filterLabels.length; i++) {
+            final int filter = i;
+            Button button = action(filterLabels[i], v -> {
+                recentFilterMode = filter;
+                updateRecentFilterButtons();
+                renderRecents();
+            });
+            recentFilterButtons.add(button);
+            filters.addView(button, new LinearLayout.LayoutParams(0, -2, 1));
+        }
+        page.addView(filters);
+        updateRecentFilterButtons();
         recentList = new LinearLayout(this);
         recentList.setOrientation(LinearLayout.VERTICAL);
         page.addView(recentList);
@@ -1792,6 +1810,36 @@ public final class MainActivity extends Activity {
         recentSortButton.setText(label);
     }
 
+    private void updateRecentFilterButtons() {
+        for (int i = 0; i < recentFilterButtons.size(); i++) {
+            Button button = recentFilterButtons.get(i);
+            button.setBackgroundColor(i == recentFilterMode ? 0xFFD9E8FF : 0xFFFFFFFF);
+            button.setTextColor(0xFF202735);
+        }
+    }
+
+    private boolean matchesRecentFilter(String name, String mime) {
+        String lower = name.toLowerCase(Locale.ROOT);
+        String type = mime == null ? "" : mime.toLowerCase(Locale.ROOT);
+        switch (recentFilterMode) {
+            case 1:
+                return lower.endsWith(".pdf") || type.equals("application/pdf");
+            case 2:
+                return (type.startsWith("text/") || lower.endsWith(".txt") || lower.endsWith(".md")
+                        || lower.endsWith(".json") || lower.endsWith(".xml") || lower.endsWith(".log"))
+                        && !lower.endsWith(".csv");
+            case 3:
+                return lower.endsWith(".csv") || type.equals("text/csv") || type.contains("comma-separated-values");
+            case 4:
+                return lower.endsWith(".doc") || lower.endsWith(".docx") || lower.endsWith(".rtf")
+                        || lower.endsWith(".xls") || lower.endsWith(".xlsx") || lower.endsWith(".ppt")
+                        || lower.endsWith(".pptx") || lower.endsWith(".wps") || lower.endsWith(".et")
+                        || lower.endsWith(".dps");
+            default:
+                return true;
+        }
+    }
+
     private void renderRecents() {
         if (recentList == null) return;
         recentList.removeAllViews();
@@ -1812,9 +1860,10 @@ public final class MainActivity extends Activity {
         for (String value : ordered) {
             Uri uri = Uri.parse(value);
             String name = nameOf(uri);
-            if (!query.isEmpty() && !name.toLowerCase(Locale.ROOT).contains(query)) continue;
-            shown++;
             String mime = getContentResolver().getType(uri);
+            if (!query.isEmpty() && !name.toLowerCase(Locale.ROOT).contains(query)) continue;
+            if (!matchesRecentFilter(name, mime)) continue;
+            shown++;
             if (mime == null) mime = "Unknown file type";
             LinearLayout card = new LinearLayout(this);
             card.setOrientation(LinearLayout.VERTICAL);
@@ -1834,7 +1883,7 @@ public final class MainActivity extends Activity {
             }));
             card.setOnClickListener(v -> openSelected(Uri.parse(value)));
         }
-        if (shown == 0) recentList.addView(label("No recent files match that name.", 14, false));
+        if (shown == 0) recentList.addView(label("No recent files match the current search and filter.", 14, false));
     }
 
     private void loadRecents() {
