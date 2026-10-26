@@ -3427,6 +3427,8 @@ public final class MainActivity extends Activity {
         formatBar.addView(action("Italic", v -> applyWriterSpan(body, new StyleSpan(Typeface.ITALIC))));
         formatBar.addView(action("Underline", v -> applyWriterSpan(body, new UnderlineSpan())));
         formatBar.addView(action("Strike", v -> applyWriterSpan(body, new StrikethroughSpan())));
+        formatBar.addView(action("Superscript", v -> applyWriterSpan(body, new SuperscriptSpan())));
+        formatBar.addView(action("Subscript", v -> applyWriterSpan(body, new SubscriptSpan())));
         formatBar.addView(action("Bigger", v -> applyWriterSpan(body, new RelativeSizeSpan(1.25f))));
         formatBar.addView(action("Smaller", v -> applyWriterSpan(body, new RelativeSizeSpan(0.85f))));
         formatBar.addView(action("Font size", v -> showWriterFontSizeDialog(body)));
