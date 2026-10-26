@@ -3,6 +3,7 @@ package org.myoffice.app;
 import android.app.Activity;
 import android.app.AlertDialog;
 import android.content.Intent;
+import android.content.ClipData;
 import android.content.SharedPreferences;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
@@ -686,6 +687,15 @@ public final class MainActivity extends Activity {
         navigation.addView(previous, new LinearLayout.LayoutParams(0, -2, 1));
         navigation.addView(next, new LinearLayout.LayoutParams(0, -2, 1));
         content.addView(navigation);
+        content.addView(action("Share PDF", v -> {
+            Intent share = new Intent(Intent.ACTION_SEND);
+            share.setType("application/pdf");
+            share.putExtra(Intent.EXTRA_STREAM, uri);
+            share.setClipData(ClipData.newUri(getContentResolver(), name, uri));
+            share.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+            try { startActivity(Intent.createChooser(share, "Share PDF")); }
+            catch (Exception e) { Toast.makeText(this, "No compatible sharing app was found.", Toast.LENGTH_LONG).show(); }
+        }));
         content.addView(label("Local PDF preview. Editing, OCR and conversion are not included in this reader yet.", 12, false));
         ScrollView scroll = new ScrollView(this);
         scroll.addView(content);
