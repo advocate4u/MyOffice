@@ -820,14 +820,14 @@ public final class MainActivity extends Activity {
         noteSearch.setSingleLine(true);
         noteSearch.setHint("Search notes by title or content");
         content.addView(noteSearch);
+        LinearLayout noteResults = new LinearLayout(this);
+        noteResults.setOrientation(LinearLayout.VERTICAL);
         Button noteSortButton = action("Sort: Modified newest", v -> {
             noteSortMode = (noteSortMode + 1) % 2;
             noteSortButtonLabel(v, noteSortMode);
             renderNoteResults(noteResults, noteSearch.getText().toString());
         });
         content.addView(noteSortButton);
-        LinearLayout noteResults = new LinearLayout(this);
-        noteResults.setOrientation(LinearLayout.VERTICAL);
         content.addView(noteResults);
         noteSearch.addTextChangedListener(new TextWatcher() {
             @Override public void beforeTextChanged(CharSequence s, int start, int count, int after) { }
