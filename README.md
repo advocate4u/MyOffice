@@ -14,6 +14,9 @@ An original Android office and learning app focused on free, offline-first use, 
 ## Current implementation
 
 - Android app module: `app/`, Java 17, minSdk 26.
+- MyAdv release signing: CI uses the persistent keystore provided through GitHub Actions secrets `MYADV_KEYSTORE_BASE64`, `MYADV_KEYSTORE_PASSWORD`, `MYADV_KEY_ALIAS`, and `MYADV_KEY_PASSWORD`. When all four are configured, CI builds a MyAdv-signed release APK; otherwise it builds a debug-signed fallback. The fallback is not the stable release signer and should not be used for upgrades over an APK signed with a different key.
+- APK verification: CI verifies the APK signature, confirms the package ID remains `org.myoffice.app`, and emits a SHA-256 checksum. Android's package installer independently validates signatures at install/update time.
+- Back navigation: the Android Back button returns through previous screens; from Home, press Back twice within two seconds to close the app. Spreadsheet/presentation editors retain their unsaved-change prompts.
 - Local file hub: system document picker, recent URI list, bounded text previews, file metadata and open-with chooser.
 - Offline notes (feature F2): create, edit, save and reopen notes in app-private storage; Hindi/English text; unsaved-change confirmation.
 - Basic PDF reader (feature F3): render local PDF pages with Android PdfRenderer and navigate previous/next pages; rendering stays on-device and unsupported/encrypted files show an error.
