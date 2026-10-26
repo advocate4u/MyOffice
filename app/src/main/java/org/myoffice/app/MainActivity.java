@@ -2986,7 +2986,7 @@ public final class MainActivity extends Activity {
         paragraphBar.addView(action("Align left", v -> applyWriterParagraphStyle(body, Layout.Alignment.ALIGN_NORMAL, -1)));
         paragraphBar.addView(action("Center paragraph", v -> applyWriterParagraphStyle(body, Layout.Alignment.ALIGN_CENTER, -1)));
         paragraphBar.addView(action("Align right", v -> applyWriterParagraphStyle(body, Layout.Alignment.ALIGN_OPPOSITE, -1)));
-        paragraphBar.addView(action("Justify", v -> { body.setJustificationMode(android.widget.TextView.JUSTIFICATION_MODE_INTER_WORD); applyWriterParagraphStyle(body, Layout.Alignment.ALIGN_NORMAL, -1); }));
+        paragraphBar.addView(action("Justify", v -> { body.setJustificationMode(android.text.Layout.JUSTIFICATION_MODE_INTER_WORD); applyWriterParagraphStyle(body, Layout.Alignment.ALIGN_NORMAL, -1); }));
         paragraphScroll.addView(paragraphBar);
         content.addView(paragraphScroll);
         TextView writerStats = label("", 12, false);
