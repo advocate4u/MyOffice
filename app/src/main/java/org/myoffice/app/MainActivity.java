@@ -1126,15 +1126,15 @@ public final class MainActivity extends Activity {
         }
         if (lower.endsWith(".xlsx") || mime.equals("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")) {
             try {
-                ArrayList<String> worksheetPaths = listXlsxWorksheetPaths(uri);
-                if (worksheetPaths.isEmpty()) throw new IllegalArgumentException("No worksheet XML was found");
-                String[] labels = new String[worksheetPaths.size()];
-                for (int i = 0; i < labels.length; i++) labels[i] = "Worksheet " + (i + 1);
+                ArrayList<XlsxWorksheet> worksheets = listXlsxWorksheets(uri);
+                if (worksheets.isEmpty()) throw new IllegalArgumentException("No worksheet XML was found");
+                String[] labels = new String[worksheets.size()];
+                for (int i = 0; i < labels.length; i++) labels[i] = worksheets.get(i).name;
                 new AlertDialog.Builder(this)
                         .setTitle("Choose worksheet to import")
                         .setItems(labels, (dialog, which) -> {
                             try {
-                                ArrayList<ArrayList<String>> imported = readXlsxSheet(uri, worksheetPaths.get(which));
+                                ArrayList<ArrayList<String>> imported = readXlsxSheet(uri, worksheets.get(which).path);
                                 Toast.makeText(this, labels[which] + " imported as a new local CSV sheet. The original XLSX is unchanged.", Toast.LENGTH_LONG).show();
                                 showSpreadsheetEditor(null, imported, true);
                             } catch (Exception e) {
@@ -3825,26 +3825,99 @@ public final class MainActivity extends Activity {
         return value.toString();
     }
 
-    private ArrayList<String> listXlsxWorksheetPaths(Uri uri) throws Exception {
+    private static final class XlsxWorksheet {
+        final String path;
+        final String name;
+        XlsxWorksheet(String path, String name) { this.path = path; this.name = name; }
+    }
+
+    private ArrayList<XlsxWorksheet> listXlsxWorksheets(Uri uri) throws Exception {
         if (sizeOf(uri) > 10L * 1024L * 1024L) throw new IllegalArgumentException("XLSX exceeds the 10 MiB import limit");
         ArrayList<String> paths = new ArrayList<>();
+        byte[] workbookXml = null;
+        byte[] relationshipsXml = null;
         try (InputStream source = getContentResolver().openInputStream(uri)) {
             if (source == null) throw new IllegalStateException("XLSX source unavailable");
             try (ZipInputStream zip = new ZipInputStream(source)) {
                 ZipEntry entry;
+                int expanded = 0;
                 while ((entry = zip.getNextEntry()) != null) {
                     String path = entry.getName();
-                    if (path.matches("xl/worksheets/sheet[0-9]+\\.xml")) paths.add(path);
+                    boolean worksheet = path.matches("xl/worksheets/sheet[0-9]+\\.xml");
+                    boolean metadata = "xl/workbook.xml".equals(path)
+                            || "xl/_rels/workbook.xml.rels".equals(path);
+                    if (worksheet) paths.add(path);
+                    if (!metadata) continue;
+                    ByteArrayOutputStream out = new ByteArrayOutputStream();
+                    byte[] buffer = new byte[4096];
+                    int count;
+                    while ((count = zip.read(buffer)) != -1) {
+                        expanded += count;
+                        if (out.size() + count > 1024 * 1024 || expanded > 2 * 1024 * 1024) {
+                            throw new IllegalArgumentException("XLSX workbook metadata exceeds the import limit");
+                        }
+                        out.write(buffer, 0, count);
+                    }
+                    if ("xl/workbook.xml".equals(path)) workbookXml = out.toByteArray();
+                    else relationshipsXml = out.toByteArray();
                 }
             }
         }
-        paths.sort(Comparator.comparingInt(path -> {
-            java.util.regex.Matcher matcher = java.util.regex.Pattern.compile("sheet([0-9]+)\\.xml$").matcher(path);
-            if (!matcher.find()) return Integer.MAX_VALUE;
-            try { return Integer.parseInt(matcher.group(1)); }
-            catch (NumberFormatException ignored) { return Integer.MAX_VALUE; }
-        }));
-        return paths;
+        if (paths.isEmpty()) return new ArrayList<>();
+        HashMap<String, String> displayNames = new HashMap<>();
+        ArrayList<String> relationshipOrder = new ArrayList<>();
+        if (workbookXml != null && relationshipsXml != null) {
+            DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
+            factory.setNamespaceAware(true);
+            factory.setXIncludeAware(false);
+            factory.setExpandEntityReferences(false);
+            factory.setFeature("http://apache.org/xml/features/disallow-doctype-decl", true);
+            factory.setFeature("http://xml.org/sax/features/external-general-entities", false);
+            factory.setFeature("http://xml.org/sax/features/external-parameter-entities", false);
+            String mainNs = "http://schemas.openxmlformats.org/spreadsheetml/2006/main";
+            String officeRelNs = "http://schemas.openxmlformats.org/officeDocument/2006/relationships";
+            String packageRelNs = "http://schemas.openxmlformats.org/package/2006/relationships";
+            org.w3c.dom.Document relDoc = factory.newDocumentBuilder().parse(new ByteArrayInputStream(relationshipsXml));
+            HashMap<String, String> targets = new HashMap<>();
+            NodeList rels = relDoc.getElementsByTagNameNS(packageRelNs, "Relationship");
+            for (int i = 0; i < rels.getLength(); i++) {
+                org.w3c.dom.Element rel = (org.w3c.dom.Element) rels.item(i);
+                String id = rel.getAttribute("Id");
+                String target = rel.getAttribute("Target");
+                if (id.isEmpty() || target.isEmpty() || "External".equals(rel.getAttribute("TargetMode"))) continue;
+                String path = target.startsWith("/") ? target.substring(1)
+                        : target.startsWith("xl/") ? target : "xl/" + target;
+                targets.put(id, path);
+            }
+            org.w3c.dom.Document bookDoc = factory.newDocumentBuilder().parse(new ByteArrayInputStream(workbookXml));
+            NodeList sheets = bookDoc.getElementsByTagNameNS(mainNs, "sheet");
+            for (int i = 0; i < sheets.getLength(); i++) {
+                org.w3c.dom.Element sheet = (org.w3c.dom.Element) sheets.item(i);
+                String label = sheet.getAttribute("name");
+                String relId = sheet.getAttributeNS(officeRelNs, "id");
+                String path = targets.get(relId);
+                if (path != null && paths.contains(path)) {
+                    displayNames.put(path, label.isEmpty() ? "Worksheet " + (relationshipOrder.size() + 1) : label);
+                    if (!relationshipOrder.contains(path)) relationshipOrder.add(path);
+                }
+            }
+        }
+        if (relationshipOrder.isEmpty()) {
+            paths.sort(Comparator.comparingInt(path -> {
+                java.util.regex.Matcher matcher = java.util.regex.Pattern.compile("sheet([0-9]+)\\.xml$").matcher(path);
+                if (!matcher.find()) return Integer.MAX_VALUE;
+                try { return Integer.parseInt(matcher.group(1)); }
+                catch (NumberFormatException ignored) { return Integer.MAX_VALUE; }
+            }));
+            relationshipOrder.addAll(paths);
+        } else {
+            for (String path : paths) if (!relationshipOrder.contains(path)) relationshipOrder.add(path);
+        }
+        ArrayList<XlsxWorksheet> result = new ArrayList<>();
+        for (String path : relationshipOrder) {
+            result.add(new XlsxWorksheet(path, displayNames.getOrDefault(path, "Worksheet " + (result.size() + 1))));
+        }
+        return result;
     }
 
     private ArrayList<ArrayList<String>> readXlsxSheet(Uri uri) throws Exception {
