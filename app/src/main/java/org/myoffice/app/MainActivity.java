@@ -1213,6 +1213,70 @@ public final class MainActivity extends Activity {
         }
     }
 
+    // Exports a rasterized copy so the chosen viewing rotation is baked into every page.
+    // The source PDF is never modified; text selection/search in the output is not preserved.
+    private void exportRotatedPdfCopy(Uri source, String name, int rotationDegrees) {
+        Toast.makeText(this, "Preparing rotated PDF copy…", Toast.LENGTH_SHORT).show();
+        new Thread(() -> {
+            File temp = null;
+            try (ParcelFileDescriptor descriptor = getContentResolver().openFileDescriptor(source, "r")) {
+                if (descriptor == null) throw new IllegalStateException("PDF source is unavailable");
+                temp = File.createTempFile("myoffice_rotated_", ".pdf", getCacheDir());
+                try (PdfRenderer renderer = new PdfRenderer(descriptor);
+                     PdfDocument output = new PdfDocument();
+                     FileOutputStream stream = new FileOutputStream(temp)) {
+                    int count = renderer.getPageCount();
+                    if (count <= 0) throw new IllegalStateException("PDF has no pages");
+                    if (count > 500) throw new IllegalStateException("This PDF has over 500 pages; export a smaller document");
+                    for (int i = 0; i < count; i++) {
+                        try (PdfRenderer.Page page = renderer.openPage(i)) {
+                            float scale = Math.min(1.5f, Math.min(1400f / page.getWidth(), 1800f / page.getHeight()));
+                            int width = Math.max(1, Math.round(page.getWidth() * scale));
+                            int height = Math.max(1, Math.round(page.getHeight() * scale));
+                            Bitmap bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888);
+                            page.render(bitmap, null, null, PdfRenderer.Page.RENDER_MODE_FOR_DISPLAY);
+                            if (rotationDegrees != 0) {
+                                Matrix matrix = new Matrix();
+                                matrix.postRotate(rotationDegrees);
+                                Bitmap rotated = Bitmap.createBitmap(bitmap, 0, 0, bitmap.getWidth(), bitmap.getHeight(), matrix, true);
+                                if (rotated != bitmap) bitmap.recycle();
+                                bitmap = rotated;
+                            }
+                            PdfDocument.Page outputPage = output.startPage(
+                                    new PdfDocument.PageInfo.Builder(bitmap.getWidth(), bitmap.getHeight(), i + 1).create());
+                            outputPage.getCanvas().drawBitmap(bitmap, 0f, 0f, null);
+                            output.finishPage(outputPage);
+                            bitmap.recycle();
+                        }
+                    }
+                    output.writeTo(stream);
+                    stream.flush();
+                }
+                File ready = temp;
+                runOnUiThread(() -> {
+                    if (isFinishing()) { ready.delete(); return; }
+                    pendingPdfFile = ready;
+                    Intent create = new Intent(Intent.ACTION_CREATE_DOCUMENT);
+                    create.addCategory(Intent.CATEGORY_OPENABLE);
+                    create.setType("application/pdf");
+                    String base = name.toLowerCase(Locale.ROOT).endsWith(".pdf")
+                            ? name.substring(0, name.length() - 4) : name;
+                    create.putExtra(Intent.EXTRA_TITLE, base + "_rotated.pdf");
+                    try { startActivityForResult(create, SAVE_PDF); }
+                    catch (Exception e) {
+                        pendingPdfFile = null;
+                        ready.delete();
+                        Toast.makeText(this, "Could not open the Save PDF picker.", Toast.LENGTH_LONG).show();
+                    }
+                });
+            } catch (Exception e) {
+                if (temp != null) temp.delete();
+                runOnUiThread(() -> Toast.makeText(this,
+                        "Could not export rotated PDF. Try a smaller, unencrypted PDF.", Toast.LENGTH_LONG).show());
+            }
+        }, "MyOffice-PDF-export").start();
+    }
+
     private void showPdf(Uri uri, String name) {
         LinearLayout content = column();
         TextView back = label("‹  Back to MyOffice", 16, true);
@@ -1295,6 +1359,7 @@ public final class MainActivity extends Activity {
             renderPdfPage(uri, pageIndex[0], pageImage, pageLabel, pageInput, previousRef[0], nextRef[0], pageIndex, zoomLevel);
             Toast.makeText(this, "PDF view reset to 0°.", Toast.LENGTH_SHORT).show();
         }));
+        content.addView(action("Export rotated PDF copy", v -> exportRotatedPdfCopy(uri, name, currentPdfRotationDegrees)));
         LinearLayout navigation = new LinearLayout(this);
         navigation.setOrientation(LinearLayout.HORIZONTAL);
         Button previous = action("Previous page", v -> {
