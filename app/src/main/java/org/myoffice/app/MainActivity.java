@@ -198,6 +198,7 @@ public final class MainActivity extends Activity {
         boolean superscript;
         boolean subscript;
         float sizeRatio = 1.0f;
+        int alignment = 0; // 0=left, 1=center, 2=right
         RtfStyleState copy() {
             RtfStyleState copy = new RtfStyleState();
             copy.bold = bold;
@@ -207,10 +208,11 @@ public final class MainActivity extends Activity {
             copy.superscript = superscript;
             copy.subscript = subscript;
             copy.sizeRatio = sizeRatio;
+            copy.alignment = alignment;
             return copy;
         }
         void reset() {
-            bold = false; italic = false; underline = false; strike = false; superscript = false; subscript = false; sizeRatio = 1.0f;
+            bold = false; italic = false; underline = false; strike = false; superscript = false; subscript = false; sizeRatio = 1.0f; alignment = 0;
         }
     }
     private ArrayList<Slide> deckSlides = new ArrayList<>();
@@ -1522,6 +1524,13 @@ public final class MainActivity extends Activity {
         if (Math.abs(style.sizeRatio - 1.0f) > 0.01f) output.setSpan(new RelativeSizeSpan(style.sizeRatio), start, end, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
     }
 
+    private void applyRtfParagraphAlignment(SpannableStringBuilder output, int start, int end, int alignment) {
+        if (start < 0 || end <= start || end > output.length()) return;
+        Layout.Alignment value = alignment == 1 ? Layout.Alignment.ALIGN_CENTER
+                : alignment == 2 ? Layout.Alignment.ALIGN_OPPOSITE : Layout.Alignment.ALIGN_NORMAL;
+        output.setSpan(new AlignmentSpan.Standard(value), start, end, Spanned.SPAN_PARAGRAPH);
+    }
+
     private SpannableStringBuilder readRtfRichText(Uri uri) throws Exception {
         if (sizeOf(uri) > 10L * 1024L * 1024L) throw new IllegalArgumentException("RTF exceeds the 10 MiB import limit");
         byte[] bytes;
@@ -1541,6 +1550,7 @@ public final class MainActivity extends Activity {
         ArrayList<Boolean> skipStack = new ArrayList<>();
         ArrayList<RtfStyleState> styleStack = new ArrayList<>();
         RtfStyleState style = new RtfStyleState();
+        int paragraphStart = 0;
         boolean skipGroup = false;
         int unicodeFallback = 1;
         int skipFallback = 0;
@@ -1618,7 +1628,15 @@ public final class MainActivity extends Activity {
                 catch (NumberFormatException ignored) { }
             }
             if (i < input.length() && input.charAt(i) == ' ') i++;
-            if ("par".equals(word) || "line".equals(word)) appendRtfText(output, "\n", style);
+            if ("par".equals(word) || "line".equals(word)) {
+                appendRtfText(output, "\n", style);
+                applyRtfParagraphAlignment(output, paragraphStart, output.length(), style.alignment);
+                paragraphStart = output.length();
+            }
+            else if ("ql".equals(word)) style.alignment = 0;
+            else if ("qc".equals(word)) style.alignment = 1;
+            else if ("qr".equals(word)) style.alignment = 2;
+            else if ("pard".equals(word)) style.alignment = 0;
             else if ("tab".equals(word)) appendRtfText(output, "\t", style);
             else if ("emdash".equals(word)) appendRtfText(output, "\u2014", style);
             else if ("endash".equals(word)) appendRtfText(output, "\u2013", style);
@@ -1645,6 +1663,9 @@ public final class MainActivity extends Activity {
                 appendRtfText(output, String.valueOf((char) code), style);
                 skipFallback = unicodeFallback;
             }
+        }
+        if (output.length() > paragraphStart) {
+            applyRtfParagraphAlignment(output, paragraphStart, output.length(), style.alignment);
         }
         return output;
     }
