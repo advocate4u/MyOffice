@@ -79,6 +79,7 @@ public final class MainActivity extends Activity {
     private int noteSortMode = 0;
     private int writerSortMode = 0;
     private int spreadsheetSortMode = 0;
+    private int presentationSortMode = 0;
     private final ArrayList<Button> recentFilterButtons = new ArrayList<>();
     private SharedPreferences prefs;
     private final ArrayList<String> recentUris = new ArrayList<>();
@@ -2004,45 +2005,93 @@ public final class MainActivity extends Activity {
             currentDeckFile = null;
             showPresentationEditor(true);
         }));
-        File[] files = deckFiles();
-        if (files.length == 0) {
-            content.addView(gap(12));
-            content.addView(label("No slide decks yet.", 15, false));
-        } else {
-            for (File file : files) {
-                String title = file.getName();
-                int count = 0;
-                try {
-                    ArrayList<Slide> slides = readDeck(file);
-                    count = slides.size();
-                    if (!slides.get(0).title.trim().isEmpty()) title = slides.get(0).title.trim();
-                } catch (Exception ignored) { }
-                final File selected = file;
-                LinearLayout card = new LinearLayout(this);
-                card.setOrientation(LinearLayout.VERTICAL);
-                card.setPadding(dp(12), dp(8), dp(12), dp(8));
-                card.setBackgroundColor(0xFFFFFFFF);
-                LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(-1, -2);
-                params.setMargins(0, dp(5), 0, dp(5));
-                content.addView(card, params);
-                card.addView(label(title, 17, true));
-                card.addView(label(count + " slide(s) · Modified " + DateFormat.getDateTimeInstance().format(new Date(file.lastModified())), 12, false));
-                card.addView(action("Delete deck", v -> confirmDeleteFile(selected, "slide deck", () -> showPresentationList())));
-                card.setOnClickListener(v -> {
-                    try {
-                        deckSlides = readDeck(selected);
-                        deckIndex = 0;
-                        currentDeckFile = selected;
-                        showPresentationEditor(true);
-                    } catch (Exception e) {
-                        Toast.makeText(this, "Could not open this slide deck.", Toast.LENGTH_LONG).show();
-                    }
-                });
-            }
-        }
+        EditText deckSearch = new EditText(this);
+        deckSearch.setSingleLine(true);
+        deckSearch.setHint("Search slide decks");
+        content.addView(deckSearch);
+        LinearLayout deckResults = new LinearLayout(this);
+        deckResults.setOrientation(LinearLayout.VERTICAL);
+        Button deckSortButton = action("Sort: Modified newest", v -> {
+            presentationSortMode = (presentationSortMode + 1) % 2;
+            deckSortButtonLabel(v, presentationSortMode);
+            renderPresentationResults(deckResults, deckSearch.getText().toString());
+        });
+        content.addView(deckSortButton);
+        content.addView(deckResults);
+        deckSearch.addTextChangedListener(new TextWatcher() {
+            @Override public void beforeTextChanged(CharSequence s, int start, int count, int after) { }
+            @Override public void onTextChanged(CharSequence s, int start, int before, int count) { renderPresentationResults(deckResults, s.toString()); }
+            @Override public void afterTextChanged(Editable s) { }
+        });
+        renderPresentationResults(deckResults, "");
+
         ScrollView scroll = new ScrollView(this);
         scroll.addView(content);
         setContentView(scroll);
+    }
+
+    private void deckSortButtonLabel(View view, int mode) {
+        if (view instanceof Button) ((Button) view).setText(mode == 0 ? "Sort: Modified newest" : "Sort: Title A–Z");
+    }
+
+    private String deckTitleForSort(File file) {
+        try {
+            ArrayList<Slide> slides = readDeck(file);
+            if (!slides.isEmpty() && !slides.get(0).title.trim().isEmpty()) return slides.get(0).title.trim();
+        } catch (Exception ignored) { }
+        return file.getName();
+    }
+
+    private void renderPresentationResults(LinearLayout results, String queryText) {
+        results.removeAllViews();
+        File[] files = deckFiles();
+        if (presentationSortMode == 1) {
+            Arrays.sort(files, (left, right) -> deckTitleForSort(left).compareToIgnoreCase(deckTitleForSort(right)));
+        } else {
+            Arrays.sort(files, Comparator.comparingLong(File::lastModified).reversed());
+        }
+        String query = queryText == null ? "" : queryText.trim().toLowerCase(Locale.ROOT);
+        int shown = 0;
+        for (File file : files) {
+            String title = file.getName();
+            int count = 0;
+            String preview = "";
+            try {
+                ArrayList<Slide> slides = readDeck(file);
+                count = slides.size();
+                if (!slides.isEmpty()) {
+                    if (!slides.get(0).title.trim().isEmpty()) title = slides.get(0).title.trim();
+                    preview = slides.get(0).body;
+                }
+            } catch (Exception ignored) { }
+            String searchable = (title + " " + preview + " " + file.getName()).toLowerCase(Locale.ROOT);
+            if (!query.isEmpty() && !searchable.contains(query)) continue;
+            shown++;
+            final File selected = file;
+            LinearLayout card = new LinearLayout(this);
+            card.setOrientation(LinearLayout.VERTICAL);
+            card.setPadding(dp(12), dp(8), dp(12), dp(8));
+            card.setBackgroundColor(0xFFFFFFFF);
+            LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(-1, -2);
+            params.setMargins(0, dp(5), 0, dp(5));
+            results.addView(card, params);
+            card.addView(label(title, 17, true));
+            if (preview.length() > 100) preview = preview.substring(0, 100) + "…";
+            card.addView(label(preview.isEmpty() ? count + " slide(s)" : preview, 13, false));
+            card.addView(label(count + " slide(s) · Modified " + DateFormat.getDateTimeInstance().format(new Date(file.lastModified())), 12, false));
+            card.addView(action("Delete deck", v -> confirmDeleteFile(selected, "slide deck", () -> showPresentationList())));
+            card.setOnClickListener(v -> {
+                try {
+                    deckSlides = readDeck(selected);
+                    deckIndex = 0;
+                    currentDeckFile = selected;
+                    showPresentationEditor(true);
+                } catch (Exception e) {
+                    Toast.makeText(this, "Could not open this slide deck.", Toast.LENGTH_LONG).show();
+                }
+            });
+        }
+        if (shown == 0) results.addView(label(query.isEmpty() ? "No slide decks yet." : "No slide decks match your search.", 15, false));
     }
 
     private void syncDeckEditor() {
