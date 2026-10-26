@@ -1593,6 +1593,62 @@ public final class MainActivity extends Activity {
         return raw;
     }
 
+    private void applyWriterListPrefix(EditText body, boolean numbered) {
+        Editable editable = body.getText();
+        String snapshot = editable.toString();
+        int selectionStart = body.getSelectionStart();
+        int selectionEnd = body.getSelectionEnd();
+        if (selectionStart < 0) selectionStart = 0;
+        if (selectionEnd < 0) selectionEnd = selectionStart;
+        int low = Math.min(selectionStart, selectionEnd);
+        int high = Math.max(selectionStart, selectionEnd);
+        int lineStart = snapshot.lastIndexOf('\n', Math.max(0, low - 1)) + 1;
+        int lineEnd = snapshot.indexOf('\n', high);
+        if (lineEnd < 0) lineEnd = snapshot.length();
+        String block = snapshot.substring(lineStart, lineEnd);
+        String[] lines = block.split("\\n", -1);
+        boolean hasTextLine = false;
+        boolean allAlreadyFormatted = true;
+        for (String line : lines) {
+            if (line.trim().isEmpty()) continue;
+            hasTextLine = true;
+            if (numbered) {
+                if (!line.matches("^\\\\d+\\\\.\\\\s+.*$")) allAlreadyFormatted = false;
+            } else if (!line.startsWith("• ")) {
+                allAlreadyFormatted = false;
+            }
+        }
+        if (!hasTextLine) {
+            Toast.makeText(this, "Enter text first, then apply a list.", Toast.LENGTH_SHORT).show();
+            return;
+        }
+        int offset = lineStart;
+        int number = 1;
+        for (String line : lines) {
+            if (!line.trim().isEmpty()) {
+                if (allAlreadyFormatted) {
+                    int prefixLength = 0;
+                    if (numbered) {
+                        String stripped = line.replaceFirst("^\\\\d+\\\\.\\\\s+", "");
+                        prefixLength = line.length() - stripped.length();
+                    } else if (line.startsWith("• ")) {
+                        prefixLength = 2;
+                    }
+                    if (prefixLength > 0) editable.delete(offset, offset + prefixLength);
+                } else {
+                    String prefix = numbered ? number + ". " : "• ";
+                    editable.insert(offset, prefix);
+                    number++;
+                }
+            }
+            offset += line.length() + 1;
+        }
+        Toast.makeText(this, allAlreadyFormatted
+                ? (numbered ? "Numbering removed." : "Bullets removed.")
+                : (numbered ? "Numbered list applied." : "Bullets applied."),
+                Toast.LENGTH_SHORT).show();
+    }
+
     private void applyWriterSpan(EditText body, Object span) {
         int start = body.getSelectionStart();
         int end = body.getSelectionEnd();
@@ -1835,6 +1891,8 @@ public final class MainActivity extends Activity {
         formatBar.addView(action("Red", v -> applyWriterSpan(body, new ForegroundColorSpan(0xFFD32F2F))));
         formatBar.addView(action("Blue", v -> applyWriterSpan(body, new ForegroundColorSpan(0xFF1565C0))));
         formatBar.addView(action("Highlight", v -> applyWriterSpan(body, new BackgroundColorSpan(0xFFFFFF00))));
+        formatBar.addView(action("• Bullets", v -> applyWriterListPrefix(body, false)));
+        formatBar.addView(action("1. Numbered", v -> applyWriterListPrefix(body, true)));
         formatBar.addView(action("Left", v -> body.setGravity(Gravity.TOP | Gravity.START)));
         formatBar.addView(action("Center", v -> body.setGravity(Gravity.TOP | Gravity.CENTER_HORIZONTAL)));
         formatBar.addView(action("Right", v -> body.setGravity(Gravity.TOP | Gravity.RIGHT)));
