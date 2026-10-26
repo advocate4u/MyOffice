@@ -1300,6 +1300,21 @@ public final class MainActivity extends Activity {
                 | android.text.InputType.TYPE_TEXT_FLAG_MULTI_LINE
                 | android.text.InputType.TYPE_TEXT_FLAG_CAP_SENTENCES);
         content.addView(body, new LinearLayout.LayoutParams(-1, dp(400)));
+        TextView writerStats = label("", 12, false);
+        writerStats.setTextColor(0xFF536078);
+        content.addView(writerStats);
+        Runnable updateWriterStats = () -> {
+            String value = body.getText().toString();
+            String trimmed = value.trim();
+            int words = trimmed.isEmpty() ? 0 : trimmed.split("\\s+").length;
+            writerStats.setText(words + " words  •  " + value.length() + " characters");
+        };
+        body.addTextChangedListener(new TextWatcher() {
+            @Override public void beforeTextChanged(CharSequence s, int start, int count, int after) { }
+            @Override public void onTextChanged(CharSequence s, int start, int before, int count) { updateWriterStats.run(); }
+            @Override public void afterTextChanged(Editable s) { }
+        });
+        updateWriterStats.run();
         content.addView(action("Find & Replace", v -> showFindReplaceDialog(body)));
         content.addView(action("Save document", v -> saveWriterFile(existing, body.getText().toString())));
         content.addView(action("Share text", v -> {
