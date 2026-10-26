@@ -20,3 +20,4 @@
 - DOCX import supports basic text and character formatting; images, tables, section layouts, headers/footers, comments, macros and advanced styles may not survive.
 - Legacy binary `.doc` is not parsed natively. Use a compatible office app to convert it to `.docx` or `.rtf` first.
 - Device acceptance tests remain pending.
+| F54-12 | Justify a paragraph and export DOCX | Paragraph uses justified alignment in compatible Word processors |
