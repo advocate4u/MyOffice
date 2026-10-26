@@ -887,7 +887,8 @@ public final class MainActivity extends Activity {
         LinearLayout results = new LinearLayout(this);
         results.setOrientation(LinearLayout.VERTICAL);
         content.addView(results);
-        Runnable render = () -> {
+        Runnable[] render = new Runnable[1];
+        render[0] = () -> {
             results.removeAllViews();
             String query = search.getText().toString().trim().toLowerCase(Locale.ROOT);
             ArrayList<String> ordered = new ArrayList<>(favoriteUris);
