@@ -1715,10 +1715,19 @@ public final class MainActivity extends Activity {
                 ("spreadsheet-editor".equals(currentScreenRoute) && "spreadsheet-list".equals(route)) ||
                 ("presentation-editor".equals(currentScreenRoute) && "presentation-list".equals(route)) ||
                 ("slideshow".equals(currentScreenRoute) && "presentation-editor".equals(route));
-        if (!restoringBackNavigation && currentRootView != null && !replaceTransition) {
+        if ("home".equals(route)) {
+            navigationHistory.clear();
+            routeHistory.clear();
+            homeHistory.clear();
+        } else if (!restoringBackNavigation && currentRootView != null && !replaceTransition) {
             navigationHistory.add(currentRootView);
             routeHistory.add(currentScreenRoute);
             homeHistory.add(homeVisible);
+            while (navigationHistory.size() > 20) {
+                navigationHistory.remove(0);
+                routeHistory.remove(0);
+                homeHistory.remove(0);
+            }
         }
         currentRootView = screen;
         currentScreenRoute = route;
