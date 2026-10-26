@@ -1109,9 +1109,32 @@ public final class MainActivity extends Activity {
                 richText.setSpan(new AlignmentSpan.Standard(layout), paragraphStart, paragraphEnd,
                         Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
             }
-            if (i < paragraphs.getLength() - 1) richText.append('\n');
+            if (i < paragraphs.getLength() - 1) appendDocxParagraphSeparator(paragraph, paragraphs.item(i + 1), richText);
         }
         return richText;
+    }
+
+    private Node findWordAncestor(Node node, String localName) {
+        Node current = node;
+        while (current != null) {
+            if (current.getNodeType() == Node.ELEMENT_NODE && localName.equals(current.getLocalName())) return current;
+            current = current.getParentNode();
+        }
+        return null;
+    }
+
+    private void appendDocxParagraphSeparator(Node currentParagraph, Node nextParagraph, SpannableStringBuilder out) {
+        Node currentCell = findWordAncestor(currentParagraph, "tc");
+        Node nextCell = findWordAncestor(nextParagraph, "tc");
+        Node currentRow = findWordAncestor(currentParagraph, "tr");
+        Node nextRow = findWordAncestor(nextParagraph, "tr");
+        if (currentCell != null && currentCell == nextCell) {
+            out.append('\n');
+        } else if (currentRow != null && currentRow == nextRow && currentCell != nextCell) {
+            out.append('\t');
+        } else {
+            out.append('\n');
+        }
     }
 
     private String wordParagraphListPrefix(Node paragraph, Map<String, String> numToAbstract,
