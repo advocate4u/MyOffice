@@ -197,6 +197,8 @@ The uploaded APK has not yet been run through REA/JADX in this environment becau
 
 - DOCX font-family import: read common `w:rFonts` ascii/hAnsi/eastAsia run properties into Writer font-family spans; the chosen font may be substituted if unavailable on the device.
 
+- DOCX heading-style import: map common Title and Heading 1–3 paragraph styles to bold, relative-size Writer spans so document hierarchy remains visible in the editable copy.
+
 ## Current status
 
 F0/F1 file hub prototype, F2 offline notes, F3 basic PDF reader, F4 plain-text Writer, F5 CSV spreadsheet grid, F6 text-only presentations, F7 image-to-PDF conversion, F8 text export and F9 CSV import are in source. F2–F50 features are implemented to varying prototype levels. F51 adds optional MyAdv-key release signing and F52 documents Back navigation. A signed release APK is created only when the same signing secrets are configured for this repository. Each feature requires successful CI and device acceptance tests before it can be considered verified. Device acceptance tests remain pending until the APK is installed and tested on Android. Work proceeds one feature at a time, with a build after each feature.
