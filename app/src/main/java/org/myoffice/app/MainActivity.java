@@ -230,7 +230,8 @@ public final class MainActivity extends Activity {
             File temp = null;
             try {
                 temp = File.createTempFile("myoffice_images_", ".pdf", getCacheDir());
-                try (PdfDocument document = new PdfDocument()) {
+                PdfDocument document = new PdfDocument();
+                try {
                     for (int i = 0; i < images.size(); i++) {
                         Bitmap bitmap = decodeImage(images.get(i));
                         if (bitmap == null) throw new IllegalArgumentException("An image could not be decoded");
@@ -249,6 +250,8 @@ public final class MainActivity extends Activity {
                         bitmap.recycle();
                     }
                     try (FileOutputStream out = new FileOutputStream(temp)) { document.writeTo(out); }
+                } finally {
+                    document.close();
                 }
                 File ready = temp;
                 runOnUiThread(() -> showSavePdfPicker(ready));
