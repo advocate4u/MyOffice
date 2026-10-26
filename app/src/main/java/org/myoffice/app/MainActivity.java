@@ -73,6 +73,8 @@ public final class MainActivity extends Activity {
     private Uri pendingPdfCopySource;
     private static final String PREFS = "myoffice_recent";
     private static final String KEY = "uris";
+    private static final String FAVORITES_PREFS = "myoffice_favorites";
+    private static final String FAVORITES_KEY = "favorite_uris";
     private static final int MAX_RECENTS = 12;
     private static final String NOTE_PREFIX = "MYOFFICE_NOTE_TITLE:";
     private View currentRootView;
@@ -98,6 +100,8 @@ public final class MainActivity extends Activity {
     private final ArrayList<Button> recentFilterButtons = new ArrayList<>();
     private SharedPreferences prefs;
     private final ArrayList<String> recentUris = new ArrayList<>();
+    private final ArrayList<String> favoriteUris = new ArrayList<>();
+    private boolean favoritesOnly = false;
     private ArrayList<ArrayList<EditText>> sheetCells = new ArrayList<>();
     private File currentCsvFile;
     private String sheetOriginalSnapshot = "";
@@ -120,6 +124,7 @@ public final class MainActivity extends Activity {
         super.onCreate(state);
         prefs = getSharedPreferences(PREFS, MODE_PRIVATE);
         loadRecents();
+        loadFavorites();
         showHome();
     }
 
@@ -198,6 +203,12 @@ public final class MainActivity extends Activity {
             renderRecents();
         });
         page.addView(recentSortButton);
+        page.addView(action("☆ Favorites only", v -> {
+            favoritesOnly = !favoritesOnly;
+            v.setAlpha(favoritesOnly ? 1.0f : 0.85f);
+            if (v instanceof Button) ((Button) v).setText(favoritesOnly ? "★ Showing favorites" : "☆ Favorites only");
+            renderRecents();
+        }));
         LinearLayout filters = new LinearLayout(this);
         filters.setOrientation(LinearLayout.HORIZONTAL);
         recentFilterButtons.clear();
@@ -2546,6 +2557,7 @@ public final class MainActivity extends Activity {
             String mime = getContentResolver().getType(uri);
             if (!query.isEmpty() && !name.toLowerCase(Locale.ROOT).contains(query)) continue;
             if (!matchesRecentFilter(name, mime)) continue;
+            if (favoritesOnly && !favoriteUris.contains(value)) continue;
             shown++;
             if (mime == null) mime = "Unknown file type";
             LinearLayout card = new LinearLayout(this);
@@ -2558,8 +2570,16 @@ public final class MainActivity extends Activity {
             card.addView(label(name, 16, true));
             card.addView(label(mime + "  •  " + sizeText(sizeOf(uri)), 12, false));
             card.addView(label("Tap to open", 11, false));
+            card.addView(action(favoriteUris.contains(value) ? "★ Remove favorite" : "☆ Add to favorites", v -> {
+                if (favoriteUris.contains(value)) favoriteUris.remove(value);
+                else favoriteUris.add(value);
+                saveFavorites();
+                renderRecents();
+            }));
             card.addView(action("Remove from recent", v -> {
                 recentUris.remove(value);
+                favoriteUris.remove(value);
+                saveFavorites();
                 saveRecents();
                 renderRecents();
                 Toast.makeText(this, "Removed from recent history. The original file was not deleted.", Toast.LENGTH_SHORT).show();
@@ -2589,5 +2609,22 @@ public final class MainActivity extends Activity {
         StringBuilder b = new StringBuilder();
         for (String uri : recentUris) b.append(uri).append("\n");
         prefs.edit().putString(KEY, b.toString()).apply();
+    }
+
+    private void loadFavorites() {
+        favoriteUris.clear();
+        SharedPreferences favoritePrefs = getSharedPreferences(FAVORITES_PREFS, MODE_PRIVATE);
+        String stored = favoritePrefs.getString(FAVORITES_KEY, "");
+        if (stored == null || stored.isEmpty()) return;
+        for (String uri : stored.split("\\n")) {
+            if (!uri.isEmpty() && !favoriteUris.contains(uri)) favoriteUris.add(uri);
+        }
+    }
+
+    private void saveFavorites() {
+        StringBuilder stored = new StringBuilder();
+        for (String uri : favoriteUris) stored.append(uri).append("\\n");
+        getSharedPreferences(FAVORITES_PREFS, MODE_PRIVATE).edit()
+                .putString(FAVORITES_KEY, stored.toString()).apply();
     }
 }
