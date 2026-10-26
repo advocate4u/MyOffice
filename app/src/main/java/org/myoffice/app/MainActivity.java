@@ -851,8 +851,8 @@ public final class MainActivity extends Activity {
         if (italic) properties.append("<w:i/>");
         if (underline) properties.append("<w:u w:val=\"single\"/>");
         if (strike) properties.append("<w:strike/>");
-        if (superscript) properties.append("<w:vertAlign w:val=\\"superscript\\"/>");
-        else if (subscript) properties.append("<w:vertAlign w:val=\\"subscript\\"/>");
+        if (superscript) properties.append("<w:vertAlign w:val=\"superscript\"/>");
+        else if (subscript) properties.append("<w:vertAlign w:val=\"subscript\"/>");
         if (fontFamily != null && !fontFamily.trim().isEmpty()) {
             String safeFamily = xmlEscape(fontFamily.trim());
             properties.append("<w:rFonts w:ascii=\"").append(safeFamily)
