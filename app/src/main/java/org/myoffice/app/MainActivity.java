@@ -174,6 +174,7 @@ public final class MainActivity extends Activity {
                 "Spreadsheet", "CSV sheets", v -> showSpreadsheetList());
         addShortcutRow(page, "Presentation", "Text slide decks", v -> showPresentationList(),
                 "Images to PDF", "Create a PDF offline", v -> openImagePicker());
+        page.addView(action("★  Favorite files", v -> showFavorites()));
         page.addView(action("Refresh recent files", v -> { loadRecents(); showHome(); }));
         page.addView(action("Clear recent history", v -> new AlertDialog.Builder(this)
                 .setTitle("Clear recent history?")
@@ -870,6 +871,72 @@ public final class MainActivity extends Activity {
             if (body.startsWith("\n")) body = body.substring(1);
             return new String[]{title, body};
         }
+    }
+
+    private void showFavorites() {
+        LinearLayout content = column();
+        TextView back = label("‹  Back to MyOffice", 16, true);
+        back.setOnClickListener(v -> showHome());
+        content.addView(back);
+        content.addView(label("★ Favorite files", 25, true));
+        content.addView(label("Your saved shortcuts to documents. Favorites stay on this device.", 13, false));
+        EditText search = new EditText(this);
+        search.setSingleLine(true);
+        search.setHint("Search favorites by filename");
+        content.addView(search);
+        LinearLayout results = new LinearLayout(this);
+        results.setOrientation(LinearLayout.VERTICAL);
+        content.addView(results);
+        Runnable render = () -> {
+            results.removeAllViews();
+            String query = search.getText().toString().trim().toLowerCase(Locale.ROOT);
+            ArrayList<String> ordered = new ArrayList<>(favoriteUris);
+            Collections.reverse(ordered);
+            int shown = 0;
+            for (String value : ordered) {
+                Uri uri = Uri.parse(value);
+                String name = nameOf(uri);
+                if (!query.isEmpty() && !name.toLowerCase(Locale.ROOT).contains(query)) continue;
+                shown++;
+                String mime = getContentResolver().getType(uri);
+                if (mime == null) mime = "Unknown file type";
+                LinearLayout card = new LinearLayout(this);
+                card.setOrientation(LinearLayout.VERTICAL);
+                card.setPadding(dp(12), dp(8), dp(12), dp(8));
+                card.setBackgroundColor(0xFFFFFFFF);
+                LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(-1, -2);
+                params.setMargins(0, dp(4), 0, dp(4));
+                results.addView(card, params);
+                card.addView(label(name, 16, true));
+                card.addView(label(mime + "  •  " + sizeText(sizeOf(uri)), 12, false));
+                card.addView(action("Open favorite", v -> {
+                    recentUris.remove(value);
+                    recentUris.add(value);
+                    while (recentUris.size() > MAX_RECENTS) recentUris.remove(0);
+                    saveRecents();
+                    openSelected(uri);
+                }));
+                card.addView(action("Remove favorite", v -> {
+                    favoriteUris.remove(value);
+                    saveFavorites();
+                    render.run();
+                }));
+            }
+            if (shown == 0) {
+                results.addView(label(query.isEmpty()
+                        ? "No favorites yet. Star a file from Recent files to save it here."
+                        : "No favorites match your search.", 14, false));
+            }
+        };
+        search.addTextChangedListener(new TextWatcher() {
+            @Override public void beforeTextChanged(CharSequence s, int start, int count, int after) { }
+            @Override public void onTextChanged(CharSequence s, int start, int before, int count) { render.run(); }
+            @Override public void afterTextChanged(Editable s) { }
+        });
+        render.run();
+        ScrollView scroll = new ScrollView(this);
+        scroll.addView(content);
+        setAppContentView(scroll, "favorites");
     }
 
     private void showNotes() {
