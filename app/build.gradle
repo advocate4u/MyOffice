@@ -11,11 +11,13 @@ android {
     namespace 'org.myoffice.app'
     compileSdk 35
     defaultConfig {
+        // Keep this applicationId unchanged so existing production installs can update.
         applicationId 'org.myoffice.app'
         minSdk 26
         targetSdk 35
-        versionCode 2
-        versionName '0.2.0'
+        // Incremented for the next compatible release. Does not bypass signing checks.
+        versionCode 3
+        versionName '0.3.0'
     }
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_17
@@ -33,6 +35,7 @@ android {
     }
     buildTypes {
         debug {
+            // Deliberately separate from production; never install this as an update.
             applicationIdSuffix '.debug'
             versionNameSuffix '-debug'
         }
