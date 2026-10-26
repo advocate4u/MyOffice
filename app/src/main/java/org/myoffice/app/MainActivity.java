@@ -1673,6 +1673,7 @@ public final class MainActivity extends Activity {
                 | android.text.InputType.TYPE_TEXT_FLAG_MULTI_LINE
                 | android.text.InputType.TYPE_TEXT_FLAG_CAP_SENTENCES);
         content.addView(body, new LinearLayout.LayoutParams(-1, dp(400)));
+        final String[] initialRichSnapshot = new String[]{Html.toHtml(body.getText(), Html.TO_HTML_PARAGRAPH_LINES_INDIVIDUAL)};
         content.addView(label("Formatting", 16, true));
         HorizontalScrollView formatScroll = new HorizontalScrollView(this);
         LinearLayout formatBar = new LinearLayout(this);
@@ -1779,7 +1780,9 @@ public final class MainActivity extends Activity {
                 .setPositiveButton("Discard", (dialog, which) -> showWriterList())
                 .show()));
         writerEditorBackHandler = () -> {
-            if (body.getText().toString().equals(initialText)) {
+            boolean unchangedText = body.getText().toString().equals(initialText);
+            boolean unchangedRich = Html.toHtml(body.getText(), Html.TO_HTML_PARAGRAPH_LINES_INDIVIDUAL).equals(initialRichSnapshot[0]);
+            if (unchangedText && unchangedRich) {
                 showWriterList();
             } else {
                 new AlertDialog.Builder(this)
