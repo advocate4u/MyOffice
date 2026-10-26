@@ -43,6 +43,7 @@ import android.text.style.AlignmentSpan;
 import android.text.style.BackgroundColorSpan;
 import android.text.style.ForegroundColorSpan;
 import android.text.style.StyleSpan;
+import android.text.style.TypefaceSpan;
 import android.text.style.UnderlineSpan;
 import android.text.style.StrikethroughSpan;
 import android.text.style.RelativeSizeSpan;
@@ -3023,6 +3024,20 @@ public final class MainActivity extends Activity {
                 body.getText().setSpan(new RelativeSizeSpan(factor), start, end, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
                 if (which != 3) body.getText().setSpan(new StyleSpan(Typeface.BOLD), start, end, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
             }).show();
+        }));
+        content.addView(action("Font family…", v -> {
+            String[] families = {"Sans serif", "Serif", "Monospace", "Sans-serif condensed", "Casual", "Cursive"};
+            String[] names = {"sans-serif", "serif", "monospace", "sans-serif-condensed", "casual", "cursive"};
+            new AlertDialog.Builder(this).setTitle("Apply font family to selection")
+                    .setItems(families, (dialog, which) -> {
+                        int start = Math.min(body.getSelectionStart(), body.getSelectionEnd());
+                        int end = Math.max(body.getSelectionStart(), body.getSelectionEnd());
+                        if (start < 0 || end <= start) {
+                            Toast.makeText(this, "Select the text to format first.", Toast.LENGTH_SHORT).show();
+                            return;
+                        }
+                        body.getText().setSpan(new TypefaceSpan(names[which]), start, end, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+                    }).show();
         }));
         content.addView(action("Font color…", v -> {
             String[] colors = {"Black", "Red", "Blue", "Green", "Purple"};
