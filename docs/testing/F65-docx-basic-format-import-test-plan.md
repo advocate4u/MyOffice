@@ -15,6 +15,7 @@
 | F65-11 | Export imported content as DOCX | Supported character styles can round-trip through the focused exporter |
 | F65-12 | Inspect source DOCX | Source file remains unchanged |
 | F65-13 | Import DOCX run with w:rFonts ascii/hAnsi/eastAsia | Available font family is represented by a Writer TypefaceSpan |
+| F65-14 | Import paragraphs styled as Title, Heading 1, Heading 2 or Heading 3 | Basic visual hierarchy is represented with bold and relative text size |
 
 ## Limitations
 
