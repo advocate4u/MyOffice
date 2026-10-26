@@ -722,6 +722,8 @@ public final class MainActivity extends Activity {
         Integer foreground = null;
         Integer background = null;
         Float sizeChange = null;
+        Integer absoluteSizePx = null;
+        String fontFamily = null;
         Object[] spans = richText.getSpans(position, Math.min(richText.length(), position + 1), Object.class);
         for (Object span : spans) {
             if (span instanceof StyleSpan) {
@@ -738,6 +740,10 @@ public final class MainActivity extends Activity {
                 background = ((BackgroundColorSpan) span).getBackgroundColor();
             } else if (span instanceof RelativeSizeSpan) {
                 sizeChange = ((RelativeSizeSpan) span).getSizeChange();
+            } else if (span instanceof AbsoluteSizeSpan) {
+                absoluteSizePx = ((AbsoluteSizeSpan) span).getSize();
+            } else if (span instanceof TypefaceSpan) {
+                fontFamily = ((TypefaceSpan) span).getFamily();
             }
         }
         StringBuilder properties = new StringBuilder();
@@ -745,6 +751,12 @@ public final class MainActivity extends Activity {
         if (italic) properties.append("<w:i/>");
         if (underline) properties.append("<w:u w:val=\"single\"/>");
         if (strike) properties.append("<w:strike/>");
+        if (fontFamily != null && !fontFamily.trim().isEmpty()) {
+            String safeFamily = xmlEscape(fontFamily.trim());
+            properties.append("<w:rFonts w:ascii=\"").append(safeFamily)
+                    .append("\" w:hAnsi=\"").append(safeFamily)
+                    .append("\" w:eastAsia=\"").append(safeFamily).append("\"/>");
+        }
         if (foreground != null) properties.append("<w:color w:val=\"")
                 .append(String.format(Locale.ROOT, "%06X", foreground & 0xFFFFFF)).append("\"/>");
         if (background != null) {
@@ -753,8 +765,10 @@ public final class MainActivity extends Activity {
             else properties.append("<w:shd w:val=\"clear\" w:color=\"auto\" w:fill=\"")
                     .append(String.format(Locale.ROOT, "%06X", color)).append("\"/>");
         }
-        if (sizeChange != null) {
-            int halfPoints = Math.max(2, Math.min(144, Math.round(24f * sizeChange)));
+        int halfPoints = -1;
+        if (absoluteSizePx != null) halfPoints = Math.max(16, Math.min(96, Math.round(absoluteSizePx * 1.5f)));
+        else if (sizeChange != null) halfPoints = Math.max(16, Math.min(96, Math.round(24f * sizeChange)));
+        if (halfPoints >= 0) {
             properties.append("<w:sz w:val=\"").append(halfPoints).append("\"/>");
             properties.append("<w:szCs w:val=\"").append(halfPoints).append("\"/>");
         }
