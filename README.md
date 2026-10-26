@@ -33,6 +33,7 @@ An original Android office and learning app focused on free, offline-first use, 
 - Slideshow (feature F17): present text-only slide decks in a read-only slide view with previous/next navigation.
 - DOCX text import (feature F18): extract paragraph text from a local DOCX package into a new Writer copy; original is unchanged and formatting/images are not preserved.
 - DOCX export (feature F19): export Writer plain text as a minimal WordprocessingML DOCX package through Android's Save document picker.
+- Arithmetic formula preview (feature F20): preview `=A1+B1`, subtraction, multiplication and division using numeric cell references, alongside the aggregate formulas from F16.
 - No login or network permission is required for these core features.
 - Rich-text formatting, DOCX import/export, formulas, XLSX/PPTX import/export, slide themes/images/animations, camera scanning/OCR, PDF annotation/search and advanced office functionality are not implemented yet.
 
@@ -74,6 +75,7 @@ The uploaded APK has not yet been run through REA/JADX in this environment becau
 - [F17 Slideshow test plan](docs/testing/F17-slideshow-test-plan.md)
 - [F18 DOCX text import test plan](docs/testing/F18-docx-import-test-plan.md)
 - [F19 DOCX export test plan](docs/testing/F19-docx-export-test-plan.md)
+- [F20 Arithmetic formula test plan](docs/testing/F20-arithmetic-formula-test-plan.md)
 
 ## Current status
 
