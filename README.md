@@ -55,6 +55,7 @@ An original Android office and learning app focused on free, offline-first use, 
 - PDF Save a Copy (feature F46): copy an opened PDF stream to a user-selected destination through Android's Save document picker.
 - Share entire presentation (feature F47): share all text slides in order through Android's system chooser, including slide numbers and titles.
 - PDF page rotation (feature F48): rotate the currently viewed PDF page in 90° steps for easier reading of sideways scans; rotation is a viewer-only transform and does not modify the source PDF.
+- Per-document PDF rotation memory (feature F49): remember each PDF's viewer rotation locally by document URI, so reopening it restores its chosen orientation without changing the file.
 - Text import (feature F14): open a supported text file in preview and optionally edit a local copy in Writer, preserving the original source.
 - Find-in-text (feature F15): search a text preview case-insensitively and highlight matching phrases locally.
 - Formula preview (feature F16): calculate read-only SUM, AVERAGE, MIN, MAX and COUNT over simple cell ranges in the CSV grid, without changing stored formula text.
@@ -125,6 +126,7 @@ The uploaded APK has not yet been run through REA/JADX in this environment becau
 - [F46 PDF Save a Copy test plan](docs/testing/F46-pdf-save-copy-test-plan.md)
 - [F47 Share entire presentation test plan](docs/testing/F47-share-entire-presentation-test-plan.md)
 - [F48 PDF page rotation test plan](docs/testing/F48-pdf-rotation-test-plan.md)
+- [F49 PDF rotation memory test plan](docs/testing/F49-pdf-rotation-memory-test-plan.md)
 - [F14 Text import test plan](docs/testing/F14-text-import-test-plan.md)
 - [F15 Find-in-text test plan](docs/testing/F15-find-in-text-test-plan.md)
 - [F16 Formula preview test plan](docs/testing/F16-formula-preview-test-plan.md)
