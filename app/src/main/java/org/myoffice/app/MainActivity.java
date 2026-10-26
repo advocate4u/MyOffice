@@ -473,6 +473,13 @@ public final class MainActivity extends Activity {
         content.addView(back);
         content.addView(label(name, 22, true));
         content.addView(label(mime + "  •  " + sizeText(sizeOf(uri)), 12, false));
+        content.addView(action("Edit a copy in Writer", v -> {
+            if (bodyText.endsWith("[Preview limited to the first 1 MiB.]")) {
+                Toast.makeText(this, "This file is too large to import into Writer yet.", Toast.LENGTH_LONG).show();
+            } else {
+                showWriterEditor(null, bodyText);
+            }
+        }));
         TextView body = label(bodyText, 15, false);
         body.setGravity(Gravity.TOP | Gravity.START);
         body.setTextIsSelectable(true);
