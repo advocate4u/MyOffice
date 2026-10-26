@@ -46,6 +46,7 @@ import android.text.style.StyleSpan;
 import android.text.style.UnderlineSpan;
 import android.text.style.StrikethroughSpan;
 import android.text.style.RelativeSizeSpan;
+import android.text.style.AbsoluteSizeSpan;
 import java.io.ByteArrayOutputStream;
 import java.io.ByteArrayInputStream;
 import java.io.File;
@@ -2119,15 +2120,27 @@ public final class MainActivity extends Activity {
                                 outputPage.getCanvas().drawBitmap(bitmap, 0f, 0f, null);
                                 if (watermarkText != null && !watermarkText.trim().isEmpty() && (annotationPageIndex < 0 || i == annotationPageIndex)) {
                                     Paint stampPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
-                                    stampPaint.setColor(0x99D32F2F);
-                                    stampPaint.setTextSize(Math.max(26f, bitmap.getWidth() * 0.045f));
-                                    stampPaint.setTextAlign(Paint.Align.CENTER);
-                                    stampPaint.setTypeface(Typeface.create(Typeface.DEFAULT, Typeface.BOLD));
-                                    outputPage.getCanvas().save();
-                                    outputPage.getCanvas().rotate(-30f, bitmap.getWidth() / 2f, bitmap.getHeight() / 2f);
-                                    outputPage.getCanvas().drawText(watermarkText.trim(), bitmap.getWidth() / 2f,
-                                            bitmap.getHeight() / 2f, stampPaint);
-                                    outputPage.getCanvas().restore();
+                                    boolean typedSignature = watermarkText.startsWith("SIGNATURE:");
+                                    String stampText = typedSignature ? watermarkText.substring("SIGNATURE:".length()).trim() : watermarkText.trim();
+                                    stampPaint.setColor(typedSignature ? 0xFF183A73 : 0x99D32F2F);
+                                    stampPaint.setTextSize(Math.max(typedSignature ? 30f : 26f, bitmap.getWidth() * (typedSignature ? 0.052f : 0.045f)));
+                                    stampPaint.setTextAlign(typedSignature ? Paint.Align.LEFT : Paint.Align.CENTER);
+                                    stampPaint.setTypeface(Typeface.create(Typeface.DEFAULT, typedSignature ? Typeface.ITALIC : Typeface.BOLD));
+                                    if (typedSignature) {
+                                        float left = bitmap.getWidth() * 0.10f;
+                                        float baseline = bitmap.getHeight() * 0.88f;
+                                        outputPage.getCanvas().drawText(stampText, left, baseline, stampPaint);
+                                        Paint linePaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+                                        linePaint.setColor(0xFF183A73);
+                                        linePaint.setStrokeWidth(2f);
+                                        outputPage.getCanvas().drawLine(left, baseline + 7f, left + stampPaint.measureText(stampText), baseline + 7f, linePaint);
+                                    } else {
+                                        outputPage.getCanvas().save();
+                                        outputPage.getCanvas().rotate(-30f, bitmap.getWidth() / 2f, bitmap.getHeight() / 2f);
+                                        outputPage.getCanvas().drawText(stampText, bitmap.getWidth() / 2f,
+                                                bitmap.getHeight() / 2f, stampPaint);
+                                        outputPage.getCanvas().restore();
+                                    }
                                 }
                                 output.finishPage(outputPage);
                                 bitmap.recycle();
@@ -2321,6 +2334,25 @@ public final class MainActivity extends Activity {
                             return;
                         }
                         exportEditedPdfCopy(uri, name, currentPdfRotationDegrees, annotation,
+                                1, Integer.MAX_VALUE, pageIndex[0]);
+                    }).show();
+        }));
+        content.addView(action("Fill & Sign · Typed signature", v -> {
+            EditText signerName = new EditText(this);
+            signerName.setSingleLine(true);
+            signerName.setHint("Type your name as a signature");
+            new AlertDialog.Builder(this)
+                    .setTitle("Sign page " + (pageIndex[0] + 1))
+                    .setMessage("Adds a typed signature to a new flattened PDF copy. This is not a certificate-based digital signature.")
+                    .setView(signerName)
+                    .setNegativeButton("Cancel", (dialog, which) -> dialog.dismiss())
+                    .setPositiveButton("Create signed copy", (dialog, which) -> {
+                        String signature = signerName.getText().toString().trim();
+                        if (signature.isEmpty()) {
+                            Toast.makeText(this, "Enter a signer name first.", Toast.LENGTH_SHORT).show();
+                            return;
+                        }
+                        exportEditedPdfCopy(uri, name, currentPdfRotationDegrees, "SIGNATURE:" + signature,
                                 1, Integer.MAX_VALUE, pageIndex[0]);
                     }).show();
         }));
@@ -2941,6 +2973,56 @@ public final class MainActivity extends Activity {
             replayingHistory[0] = false;
         }), new LinearLayout.LayoutParams(0, -2, 1));
         content.addView(historyActions);
+        content.addView(action("Font size…", v -> {
+            EditText sizeInput = new EditText(this);
+            sizeInput.setSingleLine(true);
+            sizeInput.setInputType(android.text.InputType.TYPE_CLASS_NUMBER | android.text.InputType.TYPE_NUMBER_FLAG_DECIMAL);
+            sizeInput.setHint("Size in points (8–48)");
+            new AlertDialog.Builder(this).setTitle("Apply font size to selection")
+                    .setMessage("Select text first. Without a selection, the editor text size changes.")
+                    .setView(sizeInput).setNegativeButton("Cancel", (dialog, which) -> dialog.dismiss())
+                    .setPositiveButton("Apply", (dialog, which) -> {
+                        try {
+                            float points = Float.parseFloat(sizeInput.getText().toString().trim());
+                            if (points < 8f || points > 48f) throw new NumberFormatException();
+                            int start = Math.min(body.getSelectionStart(), body.getSelectionEnd());
+                            int end = Math.max(body.getSelectionStart(), body.getSelectionEnd());
+                            if (start >= 0 && end > start) body.getText().setSpan(new AbsoluteSizeSpan((int) points, true), start, end, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+                            else body.setTextSize(points);
+                        } catch (NumberFormatException e) { Toast.makeText(this, "Enter a font size from 8 to 48.", Toast.LENGTH_SHORT).show(); }
+                    }).show();
+        }));
+        content.addView(action("Heading style", v -> {
+            String[] styles = {"Title", "Heading 1", "Heading 2", "Normal"};
+            new AlertDialog.Builder(this).setTitle("Apply style to selection").setItems(styles, (dialog, which) -> {
+                int start = Math.min(body.getSelectionStart(), body.getSelectionEnd());
+                int end = Math.max(body.getSelectionStart(), body.getSelectionEnd());
+                if (start < 0 || end <= start) { Toast.makeText(this, "Select the text to format first.", Toast.LENGTH_SHORT).show(); return; }
+                float factor = which == 0 ? 1.8f : (which == 1 ? 1.5f : (which == 2 ? 1.25f : 1.0f));
+                body.getText().setSpan(new RelativeSizeSpan(factor), start, end, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+                if (which != 3) body.getText().setSpan(new StyleSpan(Typeface.BOLD), start, end, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+            }).show();
+        }));
+        content.addView(action("Font color…", v -> {
+            String[] colors = {"Black", "Red", "Blue", "Green", "Purple"};
+            int[] values = {0xFF202124, 0xFFD32F2F, 0xFF1565C0, 0xFF2E7D32, 0xFF6A1B9A};
+            new AlertDialog.Builder(this).setTitle("Apply font color to selection").setItems(colors, (dialog, which) -> {
+                int start = Math.min(body.getSelectionStart(), body.getSelectionEnd());
+                int end = Math.max(body.getSelectionStart(), body.getSelectionEnd());
+                if (start < 0 || end <= start) { Toast.makeText(this, "Select the text to format first.", Toast.LENGTH_SHORT).show(); return; }
+                body.getText().setSpan(new ForegroundColorSpan(values[which]), start, end, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+            }).show();
+        }));
+        content.addView(action("Clear formatting", v -> {
+            Editable editable = body.getText();
+            Object[] spans = editable.getSpans(0, editable.length(), Object.class);
+            for (Object span : spans) {
+                if (span instanceof StyleSpan || span instanceof UnderlineSpan || span instanceof StrikethroughSpan
+                        || span instanceof RelativeSizeSpan || span instanceof AbsoluteSizeSpan
+                        || span instanceof ForegroundColorSpan || span instanceof BackgroundColorSpan) editable.removeSpan(span);
+            }
+            Toast.makeText(this, "Character formatting cleared.", Toast.LENGTH_SHORT).show();
+        }));
         content.addView(action("Find & Replace", v -> showFindReplaceDialog(body)));
         content.addView(action("Save document", v -> saveWriterEditorContent(existing, body)));
         content.addView(action("Save formatted copy (HTML)", v -> saveWriterHtml(null, body)));
