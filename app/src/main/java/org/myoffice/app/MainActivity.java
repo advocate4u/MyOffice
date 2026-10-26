@@ -76,7 +76,9 @@ public final class MainActivity extends Activity {
     private static final int SAVE_CSV = 4105;
     private static final int SAVE_DOCX = 4106;
     private static final int SAVE_PDF_COPY = 4107;
+    private static final int SAVE_XLSX = 4108;
     private File pendingDocxFile;
+    private File pendingXlsxFile;
     private String pendingCsvExport;
     private String pendingTextExport;
     private File pendingPdfFile;
@@ -385,6 +387,28 @@ public final class MainActivity extends Activity {
             }
             return;
         }
+        if (request == SAVE_XLSX) {
+            File temp = pendingXlsxFile;
+            pendingXlsxFile = null;
+            if (result != RESULT_OK || data == null || data.getData() == null || temp == null) {
+                if (temp != null) temp.delete();
+                return;
+            }
+            try (InputStream in = new FileInputStream(temp);
+                 java.io.OutputStream out = getContentResolver().openOutputStream(data.getData(), "wt")) {
+                if (out == null) throw new IllegalStateException("Destination cannot be written");
+                byte[] buffer = new byte[8192];
+                int count;
+                while ((count = in.read(buffer)) != -1) out.write(buffer, 0, count);
+                out.flush();
+                temp.delete();
+                Toast.makeText(this, "XLSX exported.", Toast.LENGTH_SHORT).show();
+            } catch (Exception e) {
+                temp.delete();
+                Toast.makeText(this, "Could not export XLSX.", Toast.LENGTH_LONG).show();
+            }
+            return;
+        }
         if (request == SAVE_DOCX) {
             File temp = pendingDocxFile;
             pendingDocxFile = null;
@@ -484,6 +508,83 @@ public final class MainActivity extends Activity {
         intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION);
         try { startActivityForResult(intent, PICK_FILE); }
         catch (Exception e) { Toast.makeText(this, "Could not open the XLSX picker.", Toast.LENGTH_LONG).show(); }
+    }
+
+    private String xlsxColumnName(int zeroBasedColumn) {
+        StringBuilder name = new StringBuilder();
+        int value = zeroBasedColumn + 1;
+        while (value > 0) {
+            int remainder = (value - 1) % 26;
+            name.insert(0, (char) ('A' + remainder));
+            value = (value - 1) / 26;
+        }
+        return name.toString();
+    }
+
+    private void writeXlsxFile(File target, ArrayList<ArrayList<String>> rows) throws Exception {
+        String contentTypes = "<?xml version=\\"1.0\\" encoding=\\"UTF-8\\" standalone=\\"yes\\"?>"
+                + "<Types xmlns=\\"http://schemas.openxmlformats.org/package/2006/content-types\\">"
+                + "<Default Extension=\\"rels\\" ContentType=\\"application/vnd.openxmlformats-package.relationships+xml\\"/>"
+                + "<Default Extension=\\"xml\\" ContentType=\\"application/xml\\"/>"
+                + "<Override PartName=\\"/xl/workbook.xml\\" ContentType=\\"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml\\"/>"
+                + "<Override PartName=\\"/xl/worksheets/sheet1.xml\\" ContentType=\\"application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml\\"/>"
+                + "</Types>";
+        String rootRelationships = "<?xml version=\\"1.0\\" encoding=\\"UTF-8\\" standalone=\\"yes\\"?>"
+                + "<Relationships xmlns=\\"http://schemas.openxmlformats.org/package/2006/relationships\\">"
+                + "<Relationship Id=\\"rId1\\" Type=\\"http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument\\" Target=\\"xl/workbook.xml\\"/>"
+                + "</Relationships>";
+        String workbook = "<?xml version=\\"1.0\\" encoding=\\"UTF-8\\" standalone=\\"yes\\"?>"
+                + "<workbook xmlns=\\"http://schemas.openxmlformats.org/spreadsheetml/2006/main\\" xmlns:r=\\"http://schemas.openxmlformats.org/officeDocument/2006/relationships\\">"
+                + "<sheets><sheet name=\\"MyOffice\\" sheetId=\\"1\\" r:id=\\"rId1\\"/></sheets></workbook>";
+        String workbookRelationships = "<?xml version=\\"1.0\\" encoding=\\"UTF-8\\" standalone=\\"yes\\"?>"
+                + "<Relationships xmlns=\\"http://schemas.openxmlformats.org/package/2006/relationships\\">"
+                + "<Relationship Id=\\"rId1\\" Type=\\"http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet\\" Target=\\"worksheets/sheet1.xml\\"/>"
+                + "</Relationships>";
+        StringBuilder sheet = new StringBuilder("<?xml version=\\"1.0\\" encoding=\\"UTF-8\\" standalone=\\"yes\\"?>")
+                .append("<worksheet xmlns=\\"http://schemas.openxmlformats.org/spreadsheetml/2006/main\\"><sheetData>");
+        for (int r = 0; r < rows.size(); r++) {
+            sheet.append("<row r=\\"").append(r + 1).append("\\">");
+            ArrayList<String> row = rows.get(r);
+            for (int col = 0; col < row.size(); col++) {
+                String value = row.get(col) == null ? "" : row.get(col);
+                String reference = xlsxColumnName(col) + (r + 1);
+                if (value.matches("-?(?:0|[1-9][0-9]*)(?:\\\\.[0-9]+)?(?:[Ee][+-]?[0-9]+)?")
+                        && !value.isEmpty()) {
+                    sheet.append("<c r=\\"").append(reference).append("\\"><v>")
+                            .append(value).append("</v></c>");
+                } else {
+                    sheet.append("<c r=\\"").append(reference).append("\\" t=\\"inlineStr\\"><is><t xml:space=\\"preserve\\">")
+                            .append(xmlEscape(value)).append("</t></is></c>");
+                }
+            }
+            sheet.append("</row>");
+        }
+        sheet.append("</sheetData></worksheet>");
+        try (ZipOutputStream zip = new ZipOutputStream(new FileOutputStream(target))) {
+            addDocxEntry(zip, "[Content_Types].xml", contentTypes);
+            addDocxEntry(zip, "_rels/.rels", rootRelationships);
+            addDocxEntry(zip, "xl/workbook.xml", workbook);
+            addDocxEntry(zip, "xl/_rels/workbook.xml.rels", workbookRelationships);
+            addDocxEntry(zip, "xl/worksheets/sheet1.xml", sheet.toString());
+        }
+    }
+
+    private void startXlsxExport(String suggestedName, ArrayList<ArrayList<String>> rows) {
+        File temp = null;
+        try {
+            temp = File.createTempFile("myoffice_sheet_", ".xlsx", getCacheDir());
+            writeXlsxFile(temp, rows);
+            pendingXlsxFile = temp;
+            Intent intent = new Intent(Intent.ACTION_CREATE_DOCUMENT);
+            intent.addCategory(Intent.CATEGORY_OPENABLE);
+            intent.setType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+            intent.putExtra(Intent.EXTRA_TITLE, suggestedName.toLowerCase(Locale.ROOT).endsWith(".xlsx") ? suggestedName : suggestedName + ".xlsx");
+            startActivityForResult(intent, SAVE_XLSX);
+        } catch (Exception e) {
+            if (temp != null) temp.delete();
+            pendingXlsxFile = null;
+            Toast.makeText(this, "Could not prepare XLSX export.", Toast.LENGTH_LONG).show();
+        }
     }
 
     private void startCsvExport(String suggestedName, String content) {
@@ -2947,6 +3048,10 @@ public final class MainActivity extends Activity {
         content.addView(action("Export CSV copy", v -> {
             String filename = currentCsvFile == null ? "MyOffice_Sheet.csv" : currentCsvFile.getName();
             startCsvExport(filename, serializeSheet(readSheetCells()));
+        }));
+        content.addView(action("Export XLSX copy", v -> {
+            String filename = currentCsvFile == null ? "MyOffice_Sheet.xlsx" : currentCsvFile.getName().replaceFirst("(?i)\\.csv$", ".xlsx");
+            startXlsxExport(filename, readSheetCells());
         }));
         content.addView(action("Save CSV sheet", v -> saveSpreadsheet()));
         content.addView(action("Discard changes", v -> new AlertDialog.Builder(this)
