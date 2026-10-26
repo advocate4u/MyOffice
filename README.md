@@ -1,6 +1,6 @@
 # MyOffice
 
-An original Android office and learning app focused on free, offline-first use, including Hindi/English writing and low-resource devices.
+An original Android office and learning app focused on free, offline-first use, including Hindi/English writing and low-resource devices. Android display name: **MyOffice**. App icon: original book + document + pencil design.
 
 ## Development rules
 
@@ -22,16 +22,23 @@ An original Android office and learning app focused on free, offline-first use, 
 - Presentation first milestone (feature F6): create/edit/save/reopen local text-only slide decks, navigate slides, add slides, and share current slide text.
 - Image-to-PDF first milestone (feature F7): select up to 20 local images, create a multi-page PDF on-device, and choose a destination through Android's Save document picker.
 - Text export (feature F8): export local notes and Writer content to a user-selected UTF-8 `.txt` file using Android's Save document picker.
-- CSV import (feature F9): open an existing local CSV into the editable grid, with a 1 MiB import limit and save-as-new behavior that leaves the original file unchanged.
 - No login or network permission is required for these core features.
 - Rich-text formatting, DOCX import/export, formulas, XLSX/PPTX import/export, slide themes/images/animations, camera scanning/OCR, PDF annotation/search and advanced office functionality are not implemented yet.
 
 ## Build and APK workflow
 
-GitHub Actions builds `app-debug.apk` on pushes to `main` and uploads it as `MyOffice-debug-apk`:
+GitHub Actions builds `MyOffice-0.2.0-debug.apk` on pushes to `main` and uploads it as `MyOffice-0.2.0-debug-apk`:
 https://github.com/advocate4u/MyOffice/actions/workflows/android-debug-apk.yml
 
 Check the latest run before claiming that a feature build succeeded. A successful CI build is not a substitute for installation and device-level acceptance testing.
+
+## WPS reverse engineering
+
+- [REA-led static preflight of uploaded WPS 18.20.2 APK](docs/reverse-engineering/REA-static-preflight-WPS-18.20.2.md)
+- [PowerShell helper to run official REA probes](scripts/re/inspect-wps.ps1)
+- Official REA project: https://github.com/morluto/rea
+
+The uploaded APK has not yet been run through REA/JADX in this environment because the pinned engine could not be downloaded here. The preflight report records static package data and a signing-identity warning; it does not claim the APK is authentic or working.
 
 ## Investigation and testing
 
@@ -45,8 +52,7 @@ Check the latest run before claiming that a feature build succeeded. A successfu
 - [F6 Presentation test plan](docs/testing/F6-presentation-test-plan.md)
 - [F7 Image-to-PDF test plan](docs/testing/F7-image-to-pdf-test-plan.md)
 - [F8 Text export test plan](docs/testing/F8-text-export-test-plan.md)
-- [F9 CSV import test plan](docs/testing/F9-csv-import-test-plan.md)
 
 ## Current status
 
-F0/F1 file hub prototype, F2 offline notes, F3 basic PDF reader, F4 plain-text Writer, F5 CSV spreadsheet grid, F6 text-only presentations, F7 image-to-PDF conversion, F8 text export and F9 CSV import are in source. F2 through F8 build steps passed. F9 has been committed; CI build is triggered by the push. Device acceptance tests remain pending until the APK is installed and tested on Android. Work proceeds one feature at a time, with a build after each feature.
+F0/F1 file hub prototype, F2 offline notes, F3 basic PDF reader, F4 plain-text Writer, F5 CSV spreadsheet grid, F6 text-only presentations, F7 image-to-PDF conversion and F8 text export are in source. F2 through F7 build steps passed. F8 has been committed; CI build is triggered by the push. Device acceptance tests remain pending until the APK is installed and tested on Android. Work proceeds one feature at a time, with a build after each feature.
