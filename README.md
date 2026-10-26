@@ -24,6 +24,7 @@ An original Android office and learning app focused on free, offline-first use, 
 - PDF watermark/stamp export (feature F63): add user-supplied text such as DRAFT, COPY or APPROVED to every page of a new flattened PDF copy, while preserving the chosen viewer rotation and leaving the original untouched.
 - PDF page-range extraction (feature F69): create a new flattened PDF from an inclusive user-selected page range, optionally applying the current viewer rotation, while preserving the original source.
 - PDF merge (feature F70): combine the currently opened PDF with additional selected local PDFs into a new flattened PDF, rendered offline on a background thread; originals remain unchanged and merged output is limited to 500 pages.
+- PDF current-page image export (feature F77): render the currently viewed page to a PNG through Android's built-in PdfRenderer, honor the saved viewer rotation, and save through Android's document picker. Rendering is local, runs on a background thread, and does not modify the source PDF.
 - PDF page text annotation (feature F71): add user-entered text to the currently viewed page and export a new flattened PDF copy; the annotation is baked into that page only, with the source left unchanged.
 - Writer first milestone (feature F4): create, edit, save and reopen local UTF-8 plain-text documents; share text through Android's chooser; unsaved-change confirmation.
 - Writer rich formatting (feature F57): apply bold, italic, underline, strikethrough, relative font size, red/blue text, yellow highlight, and left/center/right editor alignment. Formatted copies persist as HTML and can be reopened offline; existing TXT files remain supported.
@@ -97,7 +98,7 @@ An original Android office and learning app focused on free, offline-first use, 
 
 ## Build and APK workflow
 
-GitHub Actions builds a MyAdv-signed release APK when the four `MYADV_*` signing secrets are configured; otherwise it uploads the debug APK fallback. Workflow:
+GitHub Actions always builds a clearly labeled debug test APK. It builds a production update APK only when all four `MYADV_*` signing secrets are configured; if they are missing, the workflow fails the release-signing stage and does not publish a production update APK. Workflow:
 https://github.com/advocate4u/MyOffice/actions/workflows/android-debug-apk.yml
 
 Check the latest run before claiming that a feature build succeeded. A successful CI build is not a substitute for installation and device-level acceptance testing.
