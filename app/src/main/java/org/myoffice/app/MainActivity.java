@@ -83,6 +83,8 @@ public final class MainActivity extends Activity {
     private final ArrayList<String> routeHistory = new ArrayList<>();
     private final ArrayList<Boolean> homeHistory = new ArrayList<>();
     private boolean homeVisible = true;
+    private Runnable noteEditorBackHandler;
+    private Runnable writerEditorBackHandler;
     private LinearLayout page;
     private LinearLayout recentList;
     private EditText recentSearchInput;
@@ -850,6 +852,7 @@ public final class MainActivity extends Activity {
     }
 
     private void showNotes() {
+        noteEditorBackHandler = null;
         LinearLayout content = column();
         TextView back = label("‹  Back to MyOffice", 16, true);
         content.addView(back);
@@ -1019,7 +1022,7 @@ public final class MainActivity extends Activity {
                 .setNegativeButton("Keep editing", (dialog, which) -> dialog.dismiss())
                 .setPositiveButton("Discard", (dialog, which) -> showNotes())
                 .show()));
-        back.setOnClickListener(v -> {
+        noteEditorBackHandler = () -> {
             if (title.getText().toString().equals(initialTitle)
                     && body.getText().toString().equals(initialBody)) {
                 showNotes();
@@ -1044,7 +1047,8 @@ public final class MainActivity extends Activity {
                             }
                         }).show();
             }
-        });
+        };
+        back.setOnClickListener(v -> noteEditorBackHandler.run());
         ScrollView scroll = new ScrollView(this);
         scroll.addView(content);
         setAppContentView(scroll, "note-editor");
@@ -1340,6 +1344,7 @@ public final class MainActivity extends Activity {
     }
 
     private void showWriterList() {
+        writerEditorBackHandler = null;
         LinearLayout content = column();
         TextView back = label("‹  Back to MyOffice", 16, true);
         back.setOnClickListener(v -> showHome());
@@ -1597,7 +1602,7 @@ public final class MainActivity extends Activity {
                 .setNegativeButton("Keep editing", (dialog, which) -> dialog.dismiss())
                 .setPositiveButton("Discard", (dialog, which) -> showWriterList())
                 .show()));
-        back.setOnClickListener(v -> {
+        writerEditorBackHandler = () -> {
             if (body.getText().toString().equals(initialText)) {
                 showWriterList();
             } else {
@@ -1609,7 +1614,8 @@ public final class MainActivity extends Activity {
                         .setPositiveButton("Save", (dialog, which) -> saveWriterFile(existing, body.getText().toString()))
                         .show();
             }
-        });
+        };
+        back.setOnClickListener(v -> writerEditorBackHandler.run());
         ScrollView scroll = new ScrollView(this);
         scroll.addView(content);
         setAppContentView(scroll, "writer-editor");
@@ -1745,6 +1751,14 @@ public final class MainActivity extends Activity {
     }
 
     @Override public void onBackPressed() {
+        if ("note-editor".equals(currentScreenRoute) && noteEditorBackHandler != null) {
+            noteEditorBackHandler.run();
+            return;
+        }
+        if ("writer-editor".equals(currentScreenRoute) && writerEditorBackHandler != null) {
+            writerEditorBackHandler.run();
+            return;
+        }
         if (spreadsheetEditorOpen) {
             requestSpreadsheetExit();
             return;
