@@ -31,3 +31,13 @@ The Android debug build must compile successfully, package identity must remain 
 5. Cancel the picker and confirm the document text is unchanged.
 6. Save and reopen a supported format and confirm the inserted symbols remain intact.
 7. Repeat with Hindi and English text in the same document.
+
+
+## F89 — Signature block insertion checks
+
+1. Open Writer, place the cursor at the intended signature location, and tap **Signature block**.
+2. Confirm the block inserts a signature line plus Signature and Date labels at the cursor.
+3. Select existing text first and confirm only the selection is replaced.
+4. Confirm the cursor moves to the end of the inserted block.
+5. Save and reopen a supported format; verify the lines remain in the document.
+6. Verify undo removes the inserted block using the existing Writer undo control.
