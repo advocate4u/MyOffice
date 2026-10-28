@@ -3632,6 +3632,32 @@ public final class MainActivity extends Activity {
                     .setNegativeButton("Cancel", null)
                     .show();
         }));
+        formatBar.addView(action("Clear character formatting", v -> {
+            int start = body.getSelectionStart();
+            int end = body.getSelectionEnd();
+            if (start < 0 || end < 0) {
+                Toast.makeText(this, "Select text first.", Toast.LENGTH_SHORT).show();
+                return;
+            }
+            if (start == end) {
+                Toast.makeText(this, "Select the text whose formatting you want to clear.", Toast.LENGTH_SHORT).show();
+                return;
+            }
+            Editable editable = body.getText();
+            Object[] spans = editable.getSpans(start, end, Object.class);
+            int cleared = 0;
+            for (Object span : spans) {
+                if (span instanceof StyleSpan || span instanceof UnderlineSpan
+                        || span instanceof StrikethroughSpan || span instanceof TypefaceSpan
+                        || span instanceof ForegroundColorSpan || span instanceof BackgroundColorSpan
+                        || span instanceof RelativeSizeSpan || span instanceof AbsoluteSizeSpan
+                        || span instanceof SuperscriptSpan || span instanceof SubscriptSpan) {
+                    editable.removeSpan(span);
+                    cleared++;
+                }
+            }
+            Toast.makeText(this, cleared == 0 ? "No character formatting found in selection." : "Character formatting cleared.", Toast.LENGTH_SHORT).show();
+        }));
         formatBar.addView(action("Find in document", v -> {
             EditText query = new EditText(this);
             query.setSingleLine(true);
