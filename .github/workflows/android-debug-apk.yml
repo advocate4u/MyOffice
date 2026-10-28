@@ -24,9 +24,34 @@ jobs:
         with:
           gradle-version: '8.9'
 
-      # Debug builds intentionally use org.myoffice.app.debug and a debug key.
-      # They are for testing only and must never be installed as production updates.
+      # A persistent debug key prevents certificate changes between GitHub-hosted runs.
+      # Configure all four MYOFFICE_DEBUG_* repository Actions secrets to enable it.
+      - name: Prepare persistent MyOffice debug keystore (optional)
+        env:
+          MYOFFICE_DEBUG_KEYSTORE_BASE64: ${{ secrets.MYOFFICE_DEBUG_KEYSTORE_BASE64 }}
+          MYOFFICE_DEBUG_STORE_PASSWORD: ${{ secrets.MYOFFICE_DEBUG_STORE_PASSWORD }}
+          MYOFFICE_DEBUG_KEY_ALIAS: ${{ secrets.MYOFFICE_DEBUG_KEY_ALIAS }}
+          MYOFFICE_DEBUG_KEY_PASSWORD: ${{ secrets.MYOFFICE_DEBUG_KEY_PASSWORD }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ -z "$MYOFFICE_DEBUG_KEYSTORE_BASE64" || -z "$MYOFFICE_DEBUG_STORE_PASSWORD" || -z "$MYOFFICE_DEBUG_KEY_ALIAS" || -z "$MYOFFICE_DEBUG_KEY_PASSWORD" ]]; then
+            echo "Persistent debug signing secrets are missing; this run will use the runner's temporary debug key." >> "$GITHUB_STEP_SUMMARY"
+            echo "Future debug APKs may not update earlier debug installs unless the same key is restored." >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          printf '%s' "$MYOFFICE_DEBUG_KEYSTORE_BASE64" | base64 --decode > "$GITHUB_WORKSPACE/myoffice-debug.jks"
+          test -s "$GITHUB_WORKSPACE/myoffice-debug.jks"
+          keytool -list -keystore "$GITHUB_WORKSPACE/myoffice-debug.jks" -storepass "$MYOFFICE_DEBUG_STORE_PASSWORD" -alias "$MYOFFICE_DEBUG_KEY_ALIAS" >/dev/null
+          echo "Persistent debug keystore validated." >> "$GITHUB_STEP_SUMMARY"
+
+      # Debug builds intentionally use org.myoffice.app.debug and are never production updates.
       - name: Build debug APK for testing only
+        env:
+          MYOFFICE_DEBUG_KEYSTORE_FILE: ${{ github.workspace }}/myoffice-debug.jks
+          MYOFFICE_DEBUG_STORE_PASSWORD: ${{ secrets.MYOFFICE_DEBUG_STORE_PASSWORD }}
+          MYOFFICE_DEBUG_KEY_ALIAS: ${{ secrets.MYOFFICE_DEBUG_KEY_ALIAS }}
+          MYOFFICE_DEBUG_KEY_PASSWORD: ${{ secrets.MYOFFICE_DEBUG_KEY_PASSWORD }}
         run: gradle --no-daemon :app:assembleDebug
       - name: Verify debug APK package identity
         shell: bash
