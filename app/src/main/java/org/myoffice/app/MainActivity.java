@@ -3632,6 +3632,34 @@ public final class MainActivity extends Activity {
                     .setNegativeButton("Cancel", null)
                     .show();
         }));
+        formatBar.addView(action("Find in document", v -> {
+            EditText query = new EditText(this);
+            query.setSingleLine(true);
+            query.setHint("Text to find");
+            new AlertDialog.Builder(this)
+                    .setTitle("Find in document")
+                    .setView(query)
+                    .setPositiveButton("Find next", (dialog, which) -> {
+                        String needle = query.getText().toString();
+                        if (needle.isEmpty()) {
+                            Toast.makeText(this, "Enter text to find.", Toast.LENGTH_SHORT).show();
+                            return;
+                        }
+                        String text = body.getText().toString();
+                        int from = Math.max(0, body.getSelectionEnd());
+                        int found = text.toLowerCase(Locale.ROOT).indexOf(needle.toLowerCase(Locale.ROOT), from);
+                        if (found < 0 && from > 0) found = text.toLowerCase(Locale.ROOT).indexOf(needle.toLowerCase(Locale.ROOT));
+                        if (found < 0) {
+                            Toast.makeText(this, "No matching text found.", Toast.LENGTH_SHORT).show();
+                        } else {
+                            body.requestFocus();
+                            body.setSelection(found, found + needle.length());
+                            Toast.makeText(this, "Match selected.", Toast.LENGTH_SHORT).show();
+                        }
+                    })
+                    .setNegativeButton("Cancel", null)
+                    .show();
+        }));
         formatBar.addView(action("Signature block", v -> {
             String value = "\n\n____________________________\nSignature: __________________\nDate: ________________________\n";
             int start = Math.max(0, body.getSelectionStart());
