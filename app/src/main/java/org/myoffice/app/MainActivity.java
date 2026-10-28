@@ -3632,6 +3632,13 @@ public final class MainActivity extends Activity {
                     .setNegativeButton("Cancel", null)
                     .show();
         }));
+        formatBar.addView(action("Signature block", v -> {
+            String value = "\n\n____________________________\nSignature: __________________\nDate: ________________________\n";
+            int start = Math.max(0, body.getSelectionStart());
+            int end = Math.max(start, body.getSelectionEnd());
+            body.getText().replace(start, end, value);
+            body.setSelection(start + value.length());
+        }));
         formatBar.addView(action("Serif", v -> applyWriterSpan(body, new TypefaceSpan("serif"))));
         formatBar.addView(action("Sans", v -> applyWriterSpan(body, new TypefaceSpan("sans-serif"))));
         formatBar.addView(action("Monospace", v -> applyWriterSpan(body, new TypefaceSpan("monospace"))));
