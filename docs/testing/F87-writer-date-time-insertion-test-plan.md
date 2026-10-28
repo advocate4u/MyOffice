@@ -20,3 +20,14 @@ The Writer formatting toolbar provides Insert date, Insert time, and Insert date
 
 ## CI verification
 The Android debug build must compile successfully, package identity must remain `org.myoffice.app.debug`, and the workflow must upload a clearly labeled test-only APK. A debug APK must not be presented as a production update.
+
+
+## F88 — Special-character picker checks
+
+1. Open Writer and place the cursor inside a sentence.
+2. Open **Special characters**, choose ©, and confirm it is inserted exactly at the cursor.
+3. Select a word, choose ₹, and confirm the selected word is replaced while surrounding text remains intact.
+4. Verify punctuation and typographic symbols such as em dash, ellipsis, curly quotes, degree, multiplication, and division display correctly.
+5. Cancel the picker and confirm the document text is unchanged.
+6. Save and reopen a supported format and confirm the inserted symbols remain intact.
+7. Repeat with Hindi and English text in the same document.
