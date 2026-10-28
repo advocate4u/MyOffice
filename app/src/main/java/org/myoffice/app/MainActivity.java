@@ -3597,6 +3597,27 @@ public final class MainActivity extends Activity {
         formatBar.addView(action("Bigger", v -> applyWriterSpan(body, new RelativeSizeSpan(1.25f))));
         formatBar.addView(action("Smaller", v -> applyWriterSpan(body, new RelativeSizeSpan(0.85f))));
         formatBar.addView(action("Font size", v -> showWriterFontSizeDialog(body)));
+        formatBar.addView(action("Insert date", v -> {
+            String value = DateFormat.getDateInstance(DateFormat.MEDIUM, Locale.getDefault()).format(new Date());
+            int start = Math.max(0, body.getSelectionStart());
+            int end = Math.max(start, body.getSelectionEnd());
+            body.getText().replace(start, end, value);
+            body.setSelection(start + value.length());
+        }));
+        formatBar.addView(action("Insert time", v -> {
+            String value = DateFormat.getTimeInstance(DateFormat.SHORT, Locale.getDefault()).format(new Date());
+            int start = Math.max(0, body.getSelectionStart());
+            int end = Math.max(start, body.getSelectionEnd());
+            body.getText().replace(start, end, value);
+            body.setSelection(start + value.length());
+        }));
+        formatBar.addView(action("Insert date & time", v -> {
+            String value = DateFormat.getDateTimeInstance(DateFormat.MEDIUM, DateFormat.SHORT, Locale.getDefault()).format(new Date());
+            int start = Math.max(0, body.getSelectionStart());
+            int end = Math.max(start, body.getSelectionEnd());
+            body.getText().replace(start, end, value);
+            body.setSelection(start + value.length());
+        }));
         formatBar.addView(action("Serif", v -> applyWriterSpan(body, new TypefaceSpan("serif"))));
         formatBar.addView(action("Sans", v -> applyWriterSpan(body, new TypefaceSpan("sans-serif"))));
         formatBar.addView(action("Monospace", v -> applyWriterSpan(body, new TypefaceSpan("monospace"))));
