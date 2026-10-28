@@ -3618,6 +3618,20 @@ public final class MainActivity extends Activity {
             body.getText().replace(start, end, value);
             body.setSelection(start + value.length());
         }));
+        formatBar.addView(action("Special characters", v -> {
+            String[] symbols = {"©", "®", "™", "§", "¶", "•", "–", "—", "…", "₹", "€", "£", "°", "±", "×", "÷", "“", "”", "‘", "’"};
+            new AlertDialog.Builder(this)
+                    .setTitle("Insert special character")
+                    .setItems(symbols, (dialog, which) -> {
+                        String value = symbols[which];
+                        int start = Math.max(0, body.getSelectionStart());
+                        int end = Math.max(start, body.getSelectionEnd());
+                        body.getText().replace(start, end, value);
+                        body.setSelection(start + value.length());
+                    })
+                    .setNegativeButton("Cancel", null)
+                    .show();
+        }));
         formatBar.addView(action("Serif", v -> applyWriterSpan(body, new TypefaceSpan("serif"))));
         formatBar.addView(action("Sans", v -> applyWriterSpan(body, new TypefaceSpan("sans-serif"))));
         formatBar.addView(action("Monospace", v -> applyWriterSpan(body, new TypefaceSpan("monospace"))));
