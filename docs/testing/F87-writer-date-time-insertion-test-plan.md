@@ -41,3 +41,14 @@ The Android debug build must compile successfully, package identity must remain 
 4. Confirm the cursor moves to the end of the inserted block.
 5. Save and reopen a supported format; verify the lines remain in the document.
 6. Verify undo removes the inserted block using the existing Writer undo control.
+
+
+## F90 — Writer Find Next checks
+
+1. Open a document with repeated text and place the cursor before the first occurrence.
+2. Tap **Find in document**, enter a word, and choose **Find next**.
+3. Confirm the next matching occurrence is selected and the cursor/selection moves to it.
+4. Repeat Find Next to verify searching continues from the current selection and wraps to the beginning.
+5. Search with different letter casing and confirm matching is case-insensitive.
+6. Search for a missing term and confirm a clear “No matching text found” message appears.
+7. Submit an empty query and confirm the document remains unchanged.
