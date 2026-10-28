@@ -52,3 +52,13 @@ The Android debug build must compile successfully, package identity must remain 
 5. Search with different letter casing and confirm matching is case-insensitive.
 6. Search for a missing term and confirm a clear “No matching text found” message appears.
 7. Submit an empty query and confirm the document remains unchanged.
+
+
+## F91 — Clear character formatting checks
+
+1. Format a selected phrase with bold, italic, underline, font size, and a text color.
+2. Select that phrase and tap **Clear character formatting**.
+3. Confirm character-level spans are removed while the text itself remains unchanged.
+4. Confirm paragraph alignment/heading styles are not intentionally reset by this character-formatting action.
+5. With no selection, tap the action and confirm it asks the user to select text instead of changing content.
+6. Verify the action does not affect text outside the selected range.
